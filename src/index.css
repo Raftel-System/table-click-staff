@@ -1,0 +1,421 @@
+@import "tailwindcss";
+
+@theme {
+    --color-border: hsl(40 65% 82%);
+    --color-input: hsl(40 65% 82%);
+    --color-ring: hsl(180 100% 34%);
+    --color-background: hsl(48 40% 96%);
+    --color-foreground: hsl(215 25% 27%);
+    --color-primary: hsl(180 100% 34%);
+    --color-primary-foreground: hsl(0 0% 100%);
+    --color-secondary: hsl(40 85% 91%);
+    --color-secondary-foreground: hsl(215 25% 27%);
+    --color-destructive: hsl(0 84% 60%);
+    --color-destructive-foreground: hsl(0 0% 98%);
+    --color-muted: hsl(40 85% 91%);
+    --color-muted-foreground: hsl(215 16% 47%);
+    --color-accent: hsl(48 89% 50%);
+    --color-accent-foreground: hsl(0 0% 100%);
+    --color-popover: hsl(0 0% 100%);
+    --color-popover-foreground: hsl(215 25% 27%);
+    --color-card: hsl(0 0% 100%);
+    --color-card-foreground: hsl(215 25% 27%);
+
+    /* Sidebar colors */
+    --color-sidebar: hsl(48 40% 96%);
+    --color-sidebar-foreground: hsl(215 25% 27%);
+    --color-sidebar-primary: hsl(180 100% 34%);
+    --color-sidebar-primary-foreground: hsl(0 0% 100%);
+    --color-sidebar-accent: hsl(40 85% 91%);
+    --color-sidebar-accent-foreground: hsl(215 25% 27%);
+    --color-sidebar-border: hsl(40 65% 82%);
+    --color-sidebar-ring: hsl(180 100% 34%);
+
+    /* Border radius */
+    --radius: 0.75rem;
+}
+
+@layer base {
+    :root {
+        --background: 48 40% 96%;
+        --foreground: 215 25% 27%;
+        --card: 0 0% 100%;
+        --card-foreground: 215 25% 27%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 215 25% 27%;
+        --primary: 180 100% 34%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 40 85% 91%;
+        --secondary-foreground: 215 25% 27%;
+        --muted: 40 85% 91%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 48 89% 50%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 40 65% 82%;
+        --input: 40 65% 82%;
+        --ring: 180 100% 34%;
+        --radius: 0.75rem;
+
+        /* Variables thème Talya Méditerranéen */
+        --theme-primary-from: #00afaf;
+        --theme-primary-to: #008c8c;
+        --theme-accent-from: #e1c337;
+        --theme-accent-to: #b49c2c;
+        --theme-bg-from: #f4efe9;
+        --theme-bg-via: #e9dfd3;
+        --theme-bg-to: #d2bfa7;
+        --theme-bg-base: #f4efe9;
+        --theme-foreground: #1e293b;
+        --theme-text-secondary: #475569;
+        --theme-alert: #dc2626;
+        --theme-success: #10b981;
+
+        /* Variables dérivées - THÈME CLAIR Talya */
+        --theme-card-bg: rgba(255, 255, 255, 0.95);
+        --theme-border: rgba(210, 191, 167, 0.6);
+        --theme-shadow: rgba(0, 0, 0, 0.08);
+        --theme-shadow-lg: 0 4px 15px rgba(0, 0, 0, 0.08);
+        --theme-backdrop: rgba(0, 0, 0, 0.4);
+        --theme-button-text: #ffffff;
+
+        --sidebar-background: 48 40% 96%;
+        --sidebar-foreground: 215 25% 27%;
+        --sidebar-primary: 180 100% 34%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 40 85% 91%;
+        --sidebar-accent-foreground: 215 25% 27%;
+        --sidebar-border: 40 65% 82%;
+        --sidebar-ring: 180 100% 34%;
+    }
+
+    .dark {
+        --color-background: hsl(215 25% 27%);
+        --color-foreground: hsl(0 0% 98%);
+        --color-border: hsl(215 25% 35%);
+        --color-input: hsl(215 25% 35%);
+
+        --background: 215 25% 27%;
+        --foreground: 0 0% 98%;
+        --card: 215 25% 27%;
+        --card-foreground: 0 0% 98%;
+        --popover: 215 25% 27%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 180 100% 50%;
+        --primary-foreground: 215 25% 27%;
+        --secondary: 215 25% 35%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 215 25% 35%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 48 89% 60%;
+        --accent-foreground: 215 25% 27%;
+        --destructive: 0 62% 30%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 215 25% 35%;
+        --input: 215 25% 35%;
+        --ring: 180 100% 50%;
+        --sidebar-background: 215 25% 20%;
+        --sidebar-foreground: 0 0% 95%;
+        --sidebar-primary: 180 100% 50%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 215 25% 30%;
+        --sidebar-accent-foreground: 0 0% 95%;
+        --sidebar-border: 215 25% 30%;
+        --sidebar-ring: 180 100% 50%;
+    }
+}
+
+
+
+@layer base {
+    * {
+        border-color: hsl(40, 65%, 82%);
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        background: linear-gradient(135deg, #f4efe9 0%, #e9dfd3 50%, #d2bfa7 100%);
+        font-family: 'Inter', 'Playfair Display', system-ui, sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #00afaf, #008c8c);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #008c8c, #00afaf);
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Classes utilitaires pour les thèmes dynamiques */
+.theme-primary-gradient {
+    background: linear-gradient(to right, var(--theme-primary-from), var(--theme-primary-to));
+}
+
+.theme-accent-gradient {
+    background: linear-gradient(to right, var(--theme-accent-from), var(--theme-accent-to));
+}
+
+.theme-bg-gradient {
+    background: linear-gradient(135deg, var(--theme-bg-from) 0%, var(--theme-bg-via) 50%, var(--theme-bg-to) 100%);
+}
+
+/* Textes adaptatifs */
+.theme-primary-text {
+    color: var(--theme-primary-from);
+}
+
+.theme-accent-text {
+    color: var(--theme-accent-from);
+}
+
+.theme-foreground-text {
+    color: var(--theme-foreground);
+}
+
+.theme-secondary-text {
+    color: var(--theme-text-secondary);
+}
+
+.theme-alert-text {
+    color: var(--theme-alert);
+}
+
+.theme-success-text {
+    color: var(--theme-success);
+}
+
+/* Backgrounds adaptatifs */
+.theme-card-bg {
+    background-color: var(--theme-card-bg);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--theme-border);
+}
+
+.theme-header-bg {
+    background: rgba(244, 239, 233, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(210, 191, 167, 0.3);
+}
+
+.theme-modal-bg {
+    background: var(--theme-bg-base);
+    border: 1px solid var(--theme-border);
+}
+
+.theme-backdrop {
+    background: var(--theme-backdrop);
+}
+
+/* Bordures et ombres adaptatives */
+.theme-border {
+    border-color: var(--theme-border);
+}
+
+.theme-shadow {
+    box-shadow: 0 25px 50px -12px var(--theme-shadow);
+}
+
+.theme-shadow-lg {
+    box-shadow: var(--theme-shadow-lg);
+}
+
+/* Boutons adaptatifs */
+.theme-button-primary {
+    background: linear-gradient(to right, var(--theme-primary-from), var(--theme-primary-to));
+    color: var(--theme-button-text);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.theme-button-primary:hover {
+    background: linear-gradient(to right, var(--theme-primary-to), var(--theme-primary-from));
+    transform: scale(1.05);
+}
+
+.theme-button-secondary {
+    background: var(--theme-card-bg);
+    color: var(--theme-foreground);
+    border: 1px solid var(--theme-border);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.theme-button-secondary:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: var(--theme-primary-from);
+    color: var(--theme-primary-from);
+}
+
+/* Inputs adaptatifs */
+.theme-input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--theme-border);
+    color: var(--theme-foreground);
+    backdrop-filter: blur(8px);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.theme-input::placeholder {
+    color: var(--theme-text-secondary);
+}
+
+.theme-input:focus {
+    background: rgba(255, 255, 255, 1);
+    border-color: var(--theme-primary-from);
+    box-shadow: 0 0 0 2px rgba(0, 175, 175, 0.15);
+    outline: none;
+}
+
+/* Navigation adaptative */
+.theme-nav-item {
+    color: var(--theme-text-secondary);
+    transition: all 0.3s ease;
+}
+
+.theme-nav-item:hover {
+    color: var(--theme-primary-from);
+}
+
+.theme-nav-item.active {
+    background: linear-gradient(to right, var(--theme-primary-from), var(--theme-primary-to));
+    color: var(--theme-button-text);
+}
+
+/* Cartes de menu adaptatives */
+.theme-menu-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(210, 191, 167, 0.4);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.theme-menu-card:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(0, 175, 175, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Badges adaptatifs */
+.theme-badge-popular {
+    background: linear-gradient(to right, var(--theme-accent-from), var(--theme-accent-to));
+    color: #ffffff;
+}
+
+.theme-badge-special {
+    background: linear-gradient(to right, #8b5cf6, #a855f7);
+    color: #ffffff;
+}
+
+/* Catégories slider adaptatif */
+.theme-category-button {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--theme-foreground);
+    border: 1px solid var(--theme-border);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.theme-category-button:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: var(--theme-primary-from);
+    color: var(--theme-primary-from);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.theme-category-button.active {
+    background: linear-gradient(to right, var(--theme-primary-from), var(--theme-primary-to));
+    color: var(--theme-button-text);
+    border-color: transparent;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 175, 175, 0.3);
+}
+
+/* Gradient text pour les titres */
+.theme-gradient-text {
+    background: linear-gradient(to right, var(--theme-primary-from), var(--theme-primary-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.theme-accent-gradient-text {
+    background: linear-gradient(to right, var(--theme-accent-from), var(--theme-accent-to));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Text Clamp Utilities */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Loading animations */
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+    .theme-menu-card:hover {
+        transform: scale(1.02);
+    }
+
+    .theme-category-button.active {
+        transform: scale(1.02);
+    }
+}
