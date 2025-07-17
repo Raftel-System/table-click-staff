@@ -19,7 +19,6 @@ const Commande = () => {
   // Firebase hooks
   const { categories, loading: categoriesLoading } = useMenuCategories(restaurantSlug || '');
   const { menuItems, loading: itemsLoading } = useMenuItems(restaurantSlug || '');
-  const { tables } = useTables(restaurantSlug || '', ''); // On récupère toutes les tables pour l'instant
 
   const [activeCategory, setActiveCategory] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -36,18 +35,6 @@ const Commande = () => {
     }
   }, [categories, activeCategory]);
 
-  // Trouver la table
-  const table = useMemo(() => {
-    return tables.find(t => t.id === tableId);
-  }, [tables, tableId]);
-
-  // Charger les articles existants si la table est occupée
-  useEffect(() => {
-    if (tableId && table?.statut === 'OCCUPEE') {
-      loadExistingItems(tableId);
-    }
-  }, [tableId, table?.statut, loadExistingItems]);
-
   // Filtrer les articles par catégorie
   const filteredItems = useMemo(() => {
     if (isMenuConfig && activeMenuStep) {
@@ -61,6 +48,10 @@ const Commande = () => {
   const handleItemSelect = (item: MenuItem) => {
     console.log('🎯 handleItemSelect - item:', item);
 
+    // Toujours réinitialiser l'état d'édition et sélectionner le nouvel article
+    setEditingItem(null);
+    setSelectedItem(item);
+
     if (item.isComposedMenu && item.composedMenuConfig) {
       console.log('🎯 handleItemSelect - composedMenuConfig:', item.composedMenuConfig);
 
@@ -73,14 +64,11 @@ const Commande = () => {
 
       setActiveMenuStep(firstStepId);
       setMenuConfig({});
-      setSelectedItem(null);
 
       // Force un re-render pour déclencher filteredItems
       setTimeout(() => {
         console.log('🔄 Force re-render after menu config');
       }, 100);
-    } else {
-      setSelectedItem(item);
     }
   };
 
@@ -114,8 +102,9 @@ const Commande = () => {
   };
 
   const handleEditItem = (item: { id: string; nom: string; prix: number; quantite: number; note?: string }) => {
-    setEditingItem(item);
+    // Basculer vers le mode édition et effacer la sélection normale
     setSelectedItem(null);
+    setEditingItem(item);
   };
 
   const handleUpdateItem = (id: string, quantity: number, note: string) => {
@@ -129,11 +118,11 @@ const Commande = () => {
   };
 
   const getRetourPath = () => {
-    if (tableId?.startsWith('table_')) {
-      // Récupérer la zone de la table
-      const tableZone = tables.find(t => t.id === tableId)?.zoneId;
-      return `/${restaurantSlug}/zones/${tableZone}`;
+    if (tableId?.startsWith('CMD')) {
+      // Commande emporter - retour vers zones
+      return `/${restaurantSlug}/zones`;
     }
+    // Pour les tables, retour vers zones (on pourrait améliorer pour retourner vers la zone spécifique)
     return `/${restaurantSlug}/zones`;
   };
 
@@ -147,8 +136,8 @@ const Commande = () => {
     }
 
     return {
-      zone: table?.zoneId === 'zone_k8m2pX' ? 'Terrasse' : 'Zone',
-      table: table ? `Table ${table.numero}` : '',
+      zone: 'Table',
+      table: tableId ? `Table ${tableId}` : '',
       numero: '#1247'
     };
   };
@@ -166,11 +155,6 @@ const Commande = () => {
 
   return (
       <div className="flex flex-col h-screen theme-bg-gradient">
-        {/* Debug info */}
-        <div className="fixed top-4 right-4 bg-black text-white p-2 text-xs rounded z-50">
-          Categories: {categories.length} | Items: {menuItems.length} | Active: {activeCategory}
-        </div>
-
         {/* Top navbar */}
         <div className="theme-header-bg h-15 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
@@ -193,15 +177,6 @@ const Commande = () => {
               <span>•</span>
               <span>Commande {headerInfo.numero}</span>
             </div>
-
-            {isMenuConfig && currentMenu && (
-                <button
-                    onClick={handleReturnToCategories}
-                    className="theme-button-secondary px-3 py-1 rounded text-sm"
-                >
-                  ← Catégories
-                </button>
-            )}
           </div>
 
           <button className="theme-button-primary px-6 py-2 rounded-lg">
@@ -220,6 +195,7 @@ const Commande = () => {
               menuSteps={currentMenu?.composedMenuConfig?.steps || []}
               activeMenuStep={activeMenuStep}
               onMenuStepChange={handleMenuStepChange}
+              onReturnToCategories={handleReturnToCategories}
           />
 
           {/* Catalogue */}

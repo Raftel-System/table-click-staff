@@ -26,10 +26,6 @@ const Zones = () => {
 
   return (
       <div className="flex h-screen theme-bg-gradient">
-        {/* Debug info - à supprimer plus tard */}
-        <div className="fixed top-4 left-4 bg-black text-white p-2 text-xs rounded z-50">
-          Restaurant: {restaurantSlug} | Zones: {zones.length}
-        </div>
 
         {/* Sidebar gauche */}
         <div className="w-20 theme-header-bg flex flex-col items-center py-6 gap-6">

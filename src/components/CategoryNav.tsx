@@ -1,3 +1,5 @@
+import { ArrowLeft } from 'lucide-react';
+
 interface MenuCategory {
     id: string;
     nom: string;
@@ -19,6 +21,7 @@ interface CategoryNavProps {
     menuSteps?: MenuStep[];
     activeMenuStep?: string;
     onMenuStepChange?: (stepId: string) => void;
+    onReturnToCategories?: () => void;
 }
 
 export const CategoryNav = ({
@@ -28,11 +31,21 @@ export const CategoryNav = ({
                                 isMenuConfig,
                                 menuSteps,
                                 activeMenuStep,
-                                onMenuStepChange
+                                onMenuStepChange,
+                                onReturnToCategories
                             }: CategoryNavProps) => {
     if (isMenuConfig && menuSteps) {
         return (
             <div className="w-40 theme-menu-bg p-3 flex flex-col gap-2">
+                {/* Bouton retour vers les catégories */}
+                <button
+                    onClick={onReturnToCategories}
+                    className="theme-button-secondary px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 mb-2"
+                >
+                    <ArrowLeft className="w-3 h-3" />
+                    Catégories
+                </button>
+
                 <h3 className="text-xs font-semibold theme-foreground-text mb-3">
                     Configuration Menu
                 </h3>
