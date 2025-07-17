@@ -1,56 +1,49 @@
 import { useNavigate } from 'react-router-dom';
-import { Users } from 'lucide-react';
-import type {Table} from '../types';
+
+interface Table {
+  id: string;
+  numero: number;
+  zoneId: string;
+  capacite: number;
+  statut: 'LIBRE' | 'OCCUPEE';
+  active: boolean;
+}
 
 interface TableCardProps {
   table: Table;
+  restaurantSlug: string;
 }
 
-export const TableCard = ({ table }: TableCardProps) => {
+export const TableCard = ({ table, restaurantSlug }: TableCardProps) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    // Permettre de cliquer sur toutes les tables (libre ou occupée)
-    navigate(`/commande/${table.id}`);
-  };
-
-  const getStatusColor = () => {
-    return table.statut === 'LIBRE' 
-      ? 'border-green-200 bg-green-50 hover:bg-green-100' 
-      : 'border-red-200 bg-red-50';
-  };
-
-  const getStatusText = () => {
-    return table.statut === 'LIBRE' ? 'LIBRE' : 'OCCUPÉE';
-  };
-
-  const getStatusTextColor = () => {
-    return table.statut === 'LIBRE' ? 'text-green-700' : 'text-red-700';
+    navigate(`/${restaurantSlug}/commande/${table.id}`);
   };
 
   return (
-    <div
-      onClick={handleClick}
-      className={`
-        theme-menu-card rounded-lg p-4 h-32 w-40 flex flex-col justify-between
-        transition-all duration-300 ${getStatusColor()}
-        cursor-pointer
+      <div
+          onClick={handleClick}
+          className={`
+        theme-menu-card rounded-xl cursor-pointer p-6 h-32 w-40 
+        flex flex-col justify-center items-center text-center 
+        transition-all duration-300 hover:scale-105
+        ${table.statut === 'OCCUPEE' ? 'border-2 border-orange-400' : ''}
       `}
-    >
-      <div className="flex justify-between items-start">
-        <h3 className="text-lg font-bold theme-foreground-text">
-          Table {table.numero}
-        </h3>
+      >
+        <div className="text-2xl font-bold theme-foreground-text mb-1">
+          {table.numero}
+        </div>
+        <div className="text-sm theme-secondary-text mb-2">
+          {table.capacite} personnes
+        </div>
+        <div className={`text-xs px-2 py-1 rounded-full ${
+            table.statut === 'LIBRE'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-orange-100 text-orange-800'
+        }`}>
+          {table.statut === 'LIBRE' ? 'Libre' : 'Occupée'}
+        </div>
       </div>
-      
-      <div className="flex items-center gap-2 theme-secondary-text text-sm">
-        <Users className="w-4 h-4" />
-        <span>{table.capacite} places</span>
-      </div>
-      
-      <div className={`text-xs font-semibold ${getStatusTextColor()}`}>
-        {getStatusText()}
-      </div>
-    </div>
   );
 };

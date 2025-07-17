@@ -15,14 +15,46 @@ export interface CartItem {
   menuConfig?: MenuConfig;
 }
 
+// 🆕 Types pour menus composés
+export interface MenuOption {
+  id: string;
+  nom: string;
+  priceAdjustment: number;
+}
+
+export interface MenuStep {
+  id: string;
+  nom: string;
+  required: boolean;
+  minSelections: number;
+  maxSelections: number;
+  options: MenuOption[];
+}
+
+export interface ComposedMenuConfig {
+  basePrice: number;
+  steps: MenuStep[];
+}
+
+// 🆕 MenuItem mis à jour avec support menu composé
 export interface MenuItem {
   id: string;
   nom: string;
+  categorieId: string; // 🔄 Changé de 'categorie' à 'categorieId'
   prix: number;
   description?: string;
-  categorie: string;
-  image?: string;
   disponible: boolean;
+  ordre: number;
+  isPopular?: boolean;
+  isSpecial?: boolean;
+
+  // 🆕 Champs pour menus composés
+  isComposedMenu?: boolean;
+  composedMenuConfig?: ComposedMenuConfig;
+
+  // 🔄 Compatibilité avec ancien système
+  categorie?: string; // Pour compatibilité temporaire
+  image?: string;
   populaire?: boolean;
   special?: boolean;
   isMenu?: boolean;
@@ -34,7 +66,11 @@ export interface Table {
   numero: number;
   capacite: number;
   statut: 'LIBRE' | 'OCCUPEE';
-  zone: 'interieur' | 'terrasse';
+  zoneId: string; // 🔄 Mis à jour pour nouvelle structure
+  active: boolean;
+
+  // 🔄 Compatibilité avec ancien système
+  zone?: 'interieur' | 'terrasse';
 }
 
 export interface CommandeEmporter {
@@ -48,13 +84,23 @@ export interface CommandeEmporter {
 export interface Zone {
   id: string;
   nom: string;
-  description: string;
-  icon: string;
-  path: string;
+  serviceType: 'SALLE' | 'TAKEAWAY';
+  active: boolean;
+  ordre: number;
+
+  // 🔄 Compatibilité avec ancien système
+  description?: string;
+  icon?: string;
+  path?: string;
 }
 
 export interface Category {
   id: string;
   nom: string;
-  icon: string;
+  active: boolean;
+  ordre: number;
+  emoji?: string;
+
+  // 🔄 Compatibilité avec ancien système
+  icon?: string;
 }

@@ -1,82 +1,85 @@
-import { Utensils, ChefHat, Pizza, IceCream, GlassWater, Menu } from 'lucide-react';
-import type {Category} from '../types';
-
-interface CategoryNavProps {
-  categories: Category[];
-  activeCategory: string;
-  onCategoryChange: (categoryId: string) => void;
-  isMenuConfig?: boolean;
-  menuSteps?: string[];
-  activeMenuStep?: string;
-  onMenuStepChange?: (step: string) => void;
+interface MenuCategory {
+    id: string;
+    nom: string;
+    active: boolean;
+    ordre: number;
+    emoji?: string;
 }
 
-const getCategoryIcon = (iconName: string) => {
-  switch (iconName) {
-    case 'utensils':
-      return Utensils;
-    case 'chef-hat':
-      return ChefHat;
-    case 'pizza':
-      return Pizza;
-    case 'ice-cream':
-      return IceCream;
-    case 'glass-water':
-      return GlassWater;
-    case 'menu':
-      return Menu;
-    default:
-      return Utensils;
-  }
-};
+interface MenuStep {
+    id: string;
+    nom: string;
+}
+
+interface CategoryNavProps {
+    categories: MenuCategory[];
+    activeCategory: string;
+    onCategoryChange: (categoryId: string) => void;
+    isMenuConfig: boolean;
+    menuSteps?: MenuStep[];
+    activeMenuStep?: string;
+    onMenuStepChange?: (stepId: string) => void;
+}
 
 export const CategoryNav = ({
-  categories,
-  activeCategory,
-  onCategoryChange,
-  isMenuConfig = false,
-  menuSteps = [],
-  activeMenuStep,
-  onMenuStepChange
-}: CategoryNavProps) => {
-  if (isMenuConfig && menuSteps.length > 0 && onMenuStepChange) {
-    return (
-      <div className="w-24 theme-header-bg p-4 flex flex-col gap-3 overflow-y-auto">
-        <h3 className="text-xs font-semibold theme-secondary-text mb-2">Config Menu</h3>
-        {menuSteps.map((step) => (
-          <button
-            key={step}
-            onClick={() => onMenuStepChange(step)}
-            className={`
-              theme-category-button p-3 rounded-lg text-xs font-medium transition-all duration-300
-              ${activeMenuStep === step ? 'active' : ''}
-            `}
-          >
-            {step}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-24 theme-header-bg p-4 flex flex-col gap-3 overflow-y-auto">
-      {categories.map((category) => {
-        const IconComponent = getCategoryIcon(category.icon);
+                                categories,
+                                activeCategory,
+                                onCategoryChange,
+                                isMenuConfig,
+                                menuSteps,
+                                activeMenuStep,
+                                onMenuStepChange
+                            }: CategoryNavProps) => {
+    if (isMenuConfig && menuSteps) {
         return (
-          <button
-            key={category.id}
-            onClick={() => onCategoryChange(category.id)}
-            className={`
-              theme-category-button p-3 rounded-lg flex flex-col items-center gap-2 text-xs font-medium transition-all duration-300
-              ${activeCategory === category.id ? 'active' : ''}
+            <div className="w-40 theme-menu-bg p-3 flex flex-col gap-2">
+                <h3 className="text-xs font-semibold theme-foreground-text mb-3">
+                    Configuration Menu
+                </h3>
+                {menuSteps.map((step) => (
+                    <button
+                        key={step.id}
+                        onClick={() => onMenuStepChange?.(step.id)}
+                        className={`
+              h-12 w-full rounded-lg text-center transition-colors text-xs font-medium
+              flex items-center justify-center
+              ${activeMenuStep === step.id
+                            ? 'theme-button-primary'
+                            : 'theme-button-secondary'
+                        }
             `}
-          >
-            <IconComponent className="w-5 h-5" />
-            <span className="line-clamp-2 text-center">{category.nom}</span>
-          </button>
+                    >
+                        <span className="leading-tight">{step.nom}</span>
+                    </button>
+                ))}
+            </div>
         );
-      })}
-    </div>
-  );
+    }
+
+    return (
+        <div className="w-40 theme-menu-bg p-3 flex flex-col gap-2">
+            <h3 className="text-xs font-semibold theme-foreground-text mb-3">
+                Catégories
+            </h3>
+            {categories.map((category) => (
+                <button
+                    key={category.id}
+                    onClick={() => onCategoryChange(category.id)}
+                    className={`
+            h-12 w-full rounded-lg text-center transition-colors text-xs font-medium
+            flex flex-col items-center justify-center gap-1
+            ${activeCategory === category.id
+                        ? 'theme-button-primary'
+                        : 'theme-button-secondary'
+                    }
+          `}
+                >
+                    {category.emoji && (
+                        <span className="text-sm">{category.emoji}</span>
+                    )}
+                    <span className="leading-tight">{category.nom}</span>
+                </button>
+            ))}
+        </div>
+    );
 };

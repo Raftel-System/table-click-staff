@@ -1,4 +1,4 @@
-import type {MenuItem} from '../types';
+import type {MenuItem} from '@/types';
 import { Star, Sparkles } from 'lucide-react';
 
 interface ArticleGridProps {
@@ -7,7 +7,8 @@ interface ArticleGridProps {
 }
 
 export const ArticleGrid = ({ items, onItemSelect }: ArticleGridProps) => {
-  return (
+    console.log(items);
+    return (
     <div className="flex-1 p-4 overflow-y-auto">
       <div className="grid grid-cols-3 gap-0">
         {items.map((item) => (
