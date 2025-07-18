@@ -6,10 +6,10 @@ import type { Order } from '@/services/orderService';
 
 interface CartListProps {
     onEditItem?: (item: { id: string; nom: string; prix: number; quantite: number; note?: string }) => void;
-    onValidateOrder?: () => void;  // 🆕 Fonction pour envoyer la commande
-    isValidating?: boolean;        // 🆕 État de validation/envoi
-    currentOrder?: Order | null;   // 🆕 Commande actuelle de la base
-    isLoadingOrder?: boolean;      // 🆕 Loading state
+    onValidateOrder?: () => void;
+    isValidating?: boolean;
+    currentOrder?: Order | null;
+    isLoadingOrder?: boolean;
 }
 
 export const CartList = ({
@@ -28,10 +28,8 @@ export const CartList = ({
     // Items en attente = items du cart local qui ne sont pas envoyés
     const pendingItems = items.filter(item => !item.envoye);
 
-    // 🆕 Vérifications de sécurité pour currentOrder
-    const orderItems = currentOrder?.items || [];
-    const orderTotal = currentOrder?.total || 0;
     const orderNumber = currentOrder?.number || 'Panier';
+    const totalAmount = pendingItems.length > 0 ? total : (currentOrder?.total || 0);
 
     const formatMenuConfig = (menuConfig: any) => {
         if (!menuConfig) return '';
@@ -43,6 +41,7 @@ export const CartList = ({
     };
 
     const handleEditItem = (item: any) => {
+        // Édition directe pour tous les articles - la confirmation se fera dans AdjustmentPanel
         if (onEditItem) {
             onEditItem({
                 id: item.id,
@@ -66,7 +65,6 @@ export const CartList = ({
         setCancelModal({ isOpen: false, item: null });
     };
 
-    // 🆕 Gérer l'envoi de la commande
     const handleSendOrder = () => {
         if (onValidateOrder && pendingItems.length > 0) {
             onValidateOrder();
@@ -82,14 +80,7 @@ export const CartList = ({
                         {orderNumber}
                     </h3>
                     <div className="theme-primary-text font-bold">
-                        {/* Affichage du total selon le contexte */}
-                        {pendingItems.length > 0 ? (
-                            <span>En cours: {total.toFixed(2)}€</span>
-                        ) : currentOrder ? (
-                            <span>Total: {orderTotal.toFixed(2)}€</span>
-                        ) : (
-                            <span>Total: {total.toFixed(2)}€</span>
-                        )}
+                        Total: {totalAmount.toFixed(2)}€
                     </div>
                 </div>
             </div>
@@ -105,97 +96,119 @@ export const CartList = ({
                         </div>
                     )}
 
-                    {/* Items en attente (cart local) */}
-                    {!isLoadingOrder && pendingItems.length > 0 && (
+                    {/* Affichage séparé des articles */}
+                    {!isLoadingOrder && (
                         <div>
-                            <h4 className="text-sm font-semibold theme-secondary-text mb-2 flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                En attente ({pendingItems.length})
-                            </h4>
-                            {pendingItems.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                    onClick={() => handleEditItem(item)}
-                                >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex-1">
-                                            <div className="theme-foreground-text font-medium text-sm line-clamp-2">
-                                                {item.nom}{formatMenuConfig(item.menuConfig)}
-                                            </div>
-                                            {item.note && (
-                                                <div className="theme-secondary-text text-xs mt-1">
-                                                    Note: {item.note}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                            {/* Section articles en attente */}
+                            {pendingItems.length > 0 && (
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-semibold theme-secondary-text mb-3 flex items-center gap-2">
+                                        <Clock className="w-4 h-4" />
+                                        En attente ({pendingItems.length})
+                                    </h4>
 
-                                    <div className="flex justify-between items-center">
-                                        <div className="theme-foreground-text text-sm font-medium">
-                                            Quantité: {item.quantite}
-                                        </div>
-                                        <div className="theme-primary-text font-semibold text-sm">
-                                            {(item.prix * item.quantite).toFixed(2)}€
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* 🆕 Commande envoyée (affichage de la commande de la base) */}
-                    {!isLoadingOrder && currentOrder && orderItems.length > 0 && (
-                        <div>
-                            <h4 className="text-sm font-semibold theme-success-text mb-2 flex items-center gap-2">
-                                <Check className="w-4 h-4" />
-                                Envoyé • {currentOrder.status}
-                            </h4>
-
-                            <div className="theme-menu-card p-3 rounded-lg opacity-90">
-                                {/* Heure de création */}
-                                <div className="text-xs theme-secondary-text mb-3">
-                                    Créé à {new Date(currentOrder.createdAt).toLocaleTimeString('fr-FR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                                    {currentOrder.lastUpdated && (
-                                        <span> • Mis à jour à {new Date(currentOrder.lastUpdated).toLocaleTimeString('fr-FR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}</span>
-                                    )}
-                                </div>
-
-                                {/* Items de la commande */}
-                                {orderItems.map((item, index) => (
-                                    <div key={`${currentOrder.id}-${index}`} className="border-t border-gray-200 pt-2 mt-2 first:border-t-0 first:pt-0 first:mt-0">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="theme-foreground-text font-medium text-sm">
-                                                    {item.nom}{formatMenuConfig(item.menuConfig)}
-                                                </div>
-                                                {item.note && (
-                                                    <div className="theme-secondary-text text-xs mt-1">
-                                                        Note: {item.note}
+                                    {pendingItems.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors mb-2"
+                                            onClick={() => handleEditItem(item)}
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex-1">
+                                                    <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                                                        {item.nom}{formatMenuConfig(item.menuConfig)}
                                                     </div>
-                                                )}
+                                                    {item.note && (
+                                                        <div className="theme-secondary-text text-xs mt-1">
+                                                            Note: {item.note}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="text-right ml-2">
-                                                <div className="theme-foreground-text text-sm">x{item.quantite}</div>
-                                                <div className="theme-primary-text font-semibold text-xs">
+
+                                            <div className="flex justify-between items-center">
+                                                <div className="theme-foreground-text text-sm font-medium">
+                                                    Quantité: {item.quantite}
+                                                </div>
+                                                <div className="theme-primary-text font-semibold text-sm">
                                                     {(item.prix * item.quantite).toFixed(2)}€
                                                 </div>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Section articles envoyés */}
+                            {currentOrder?.items && currentOrder.items.length > 0 && (
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold theme-success-text mb-2 flex items-center gap-2">
+                                        <Check className="w-4 h-4" />
+                                        Envoyé • {currentOrder.status}
+                                    </h4>
+                                    <div className="text-xs theme-secondary-text mb-3">
+                                        Créé à {new Date(currentOrder.createdAt).toLocaleTimeString('fr-FR', {
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
+                                        {currentOrder.lastUpdated && (
+                                            <span> • Mis à jour à {new Date(currentOrder.lastUpdated).toLocaleTimeString('fr-FR', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}</span>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+
+                                    {currentOrder.items.map((item, index) => {
+                                        const serverItem = {
+                                            id: `${currentOrder.id}-${index}`,
+                                            nom: item.nom,
+                                            prix: item.prix,
+                                            quantite: item.quantite,
+                                            note: item.note,
+                                            menuConfig: item.menuConfig
+                                        };
+
+                                        return (
+                                            <div
+                                                key={serverItem.id}
+                                                className="theme-menu-card p-3 rounded-lg cursor-pointer transition-colors mb-2 opacity-90 border-l-4 border-green-500"
+                                                onClick={() => handleEditItem(serverItem)}
+                                            >
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                                                                {item.nom}{formatMenuConfig(item.menuConfig)}
+                                                            </div>
+                                                            <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                                        </div>
+                                                        {item.note && (
+                                                            <div className="theme-secondary-text text-xs mt-1">
+                                                                Note: {item.note}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-between items-center">
+                                                    <div className="theme-foreground-text text-sm font-medium">
+                                                        Quantité: {item.quantite}
+                                                    </div>
+                                                    <div className="theme-primary-text font-semibold text-sm">
+                                                        {(item.prix * item.quantite).toFixed(2)}€
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* Message si complètement vide */}
-                    {!isLoadingOrder && pendingItems.length === 0 && orderItems.length === 0 && (
+                    {!isLoadingOrder && pendingItems.length === 0 && (!currentOrder?.items || currentOrder.items.length === 0) && (
                         <div className="text-center theme-secondary-text text-sm py-8">
                             Aucun article
                         </div>
@@ -203,7 +216,7 @@ export const CartList = ({
                 </div>
             </div>
 
-            {/* 🆕 Footer fixe avec bouton ENVOYER */}
+            {/* Footer fixe avec bouton ENVOYER */}
             <div className="p-4 border-t border-gray-200">
                 {pendingItems.length > 0 && (
                     <button
@@ -220,6 +233,7 @@ export const CartList = ({
                 )}
             </div>
 
+            {/* Modals */}
             <CancelModal
                 isOpen={cancelModal.isOpen}
                 onClose={() => setCancelModal({ isOpen: false, item: null })}

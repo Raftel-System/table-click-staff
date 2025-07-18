@@ -1,14 +1,70 @@
 import { useState, useEffect } from 'react';
-import { Plus, Minus, StickyNote, X } from 'lucide-react';
+import { Plus, Minus, StickyNote, X, AlertTriangle } from 'lucide-react';
 import type {MenuItem} from '../types';
 
 interface AdjustmentPanelProps {
   selectedItem: MenuItem | null;
   onAddToCart: (item: MenuItem, quantity: number, note: string) => void;
-  editingItem?: { id: string; nom: string; prix: number; quantite: number; note?: string } | null;
+  editingItem?: {
+    id: string;
+    nom: string;
+    prix: number;
+    quantite: number;
+    note?: string;
+    isSent?: boolean; // 🆕 Indique si l'article est déjà envoyé
+  } | null;
   onUpdateItem?: (id: string, quantity: number, note: string) => void;
   onCancelItem?: (id: string) => void;
 }
+
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  itemName: string;
+  action: 'modify' | 'delete';
+}
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, action }: ConfirmationModalProps) => {
+  if (!isOpen) return null;
+
+  const actionText = action === 'modify' ? 'modifier' : 'supprimer';
+  const actionTextCapitalized = action === 'modify' ? 'Modifier' : 'Supprimer';
+  const buttonColor = action === 'modify' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700';
+
+  return (
+      <div className="fixed inset-0 theme-backdrop flex items-center justify-center z-50">
+        <div className="theme-modal-bg rounded-lg p-6 max-w-md w-full mx-4 theme-shadow-lg">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-lg font-semibold theme-foreground-text mb-2">
+                {actionTextCapitalized} un article envoyé
+              </h3>
+              <p className="theme-secondary-text text-sm">
+                Vous êtes sur le point de {actionText} <strong>"{itemName}"</strong> qui a déjà été envoyé en cuisine.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+                onClick={onClose}
+                className="flex-1 theme-button-secondary py-2 px-4 rounded-lg"
+            >
+              Annuler
+            </button>
+            <button
+                onClick={onConfirm}
+                className={`flex-1 ${buttonColor} text-white py-2 px-4 rounded-lg font-semibold transition-colors`}
+            >
+              Continuer
+            </button>
+          </div>
+        </div>
+      </div>
+  );
+};
 
 export const AdjustmentPanel = ({
                                   selectedItem,
@@ -21,10 +77,18 @@ export const AdjustmentPanel = ({
   const [note, setNote] = useState('');
   const [showNotePopup, setShowNotePopup] = useState(false);
   const [tempNote, setTempNote] = useState('');
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    action: 'modify' | 'delete';
+  }>({
+    isOpen: false,
+    action: 'modify'
+  });
 
   // Utiliser les valeurs de l'item en cours d'édition
   const currentItem = editingItem || selectedItem;
   const isEditing = !!editingItem;
+  const isSentItem = editingItem?.isSent || false;
 
   // Mettre à jour les valeurs quand on change d'item
   useEffect(() => {
@@ -44,18 +108,46 @@ export const AdjustmentPanel = ({
 
   const handleAddToCart = () => {
     if (isEditing && editingItem && onUpdateItem) {
-      onUpdateItem(editingItem.id, quantity, note);
+      if (isSentItem) {
+        // Article envoyé - demander confirmation
+        setConfirmationModal({ isOpen: true, action: 'modify' });
+      } else {
+        // Article en attente - modification directe
+        onUpdateItem(editingItem.id, quantity, note);
+        setQuantity(1);
+        setNote('');
+      }
     } else if (selectedItem) {
       onAddToCart(selectedItem, quantity, note);
+      setQuantity(1);
+      setNote('');
     }
-    setQuantity(1);
-    setNote('');
   };
 
   const handleCancelItem = () => {
     if (isEditing && editingItem && onCancelItem) {
+      if (isSentItem) {
+        // Article envoyé - demander confirmation
+        setConfirmationModal({ isOpen: true, action: 'delete' });
+      } else {
+        // Article en attente - suppression directe
+        onCancelItem(editingItem.id);
+      }
+    }
+  };
+
+  const handleConfirmAction = () => {
+    if (!editingItem) return;
+
+    if (confirmationModal.action === 'modify' && onUpdateItem) {
+      onUpdateItem(editingItem.id, quantity, note);
+      setQuantity(1);
+      setNote('');
+    } else if (confirmationModal.action === 'delete' && onCancelItem) {
       onCancelItem(editingItem.id);
     }
+
+    setConfirmationModal({ isOpen: false, action: 'modify' });
   };
 
   const handleNoteClick = () => {
@@ -94,6 +186,12 @@ export const AdjustmentPanel = ({
             <div className="theme-foreground-text text-xs font-bold mb-2">
               Ajust.
             </div>
+            {/* 🆕 Indicateur si article envoyé */}
+            {isSentItem && (
+                <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2">
+                  Envoyé
+                </div>
+            )}
           </div>
 
           {/* Article sélectionné */}
@@ -138,23 +236,55 @@ export const AdjustmentPanel = ({
             )}
           </button>
 
-          {/* Boutons d'action */}
-          <button
-              onClick={handleAddToCart}
-              className="theme-button-primary py-2 px-3 rounded-lg text-xs font-semibold"
-          >
-            {isEditing ? 'Modifier' : 'Ajouter'}
-          </button>
+          {/* 🆕 Boutons d'action selon le contexte */}
+          {isEditing ? (
+              <>
+                {/* Mode édition - Modifier */}
+                <button
+                    onClick={handleAddToCart}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                        isSentItem
+                            ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                            : 'theme-button-primary'
+                    }`}
+                >
+                  {isSentItem ? 'Modifier*' : 'Modifier'}
+                </button>
 
-          {isEditing && (
+                {/* Mode édition - Supprimer */}
+                <button
+                    onClick={handleCancelItem}
+                    className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                >
+                  {isSentItem ? 'Supprimer*' : 'Supprimer'}
+                </button>
+
+                {/* 🆕 Note explicative pour articles envoyés */}
+                {isSentItem && (
+                    <div className="text-xs theme-secondary-text text-center mt-2 leading-tight">
+                      * Article déjà envoyé en cuisine
+                    </div>
+                )}
+              </>
+          ) : (
+              /* Mode normal - Ajouter */
               <button
-                  onClick={handleCancelItem}
-                  className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                  onClick={handleAddToCart}
+                  className="theme-button-primary py-2 px-3 rounded-lg text-xs font-semibold"
               >
-                Supprimer
+                Ajouter
               </button>
           )}
         </div>
+
+        {/* Popup de confirmation pour articles envoyés */}
+        <ConfirmationModal
+            isOpen={confirmationModal.isOpen}
+            onClose={() => setConfirmationModal({ isOpen: false, action: 'modify' })}
+            onConfirm={handleConfirmAction}
+            itemName={editingItem?.nom || ''}
+            action={confirmationModal.action}
+        />
 
         {/* Popup pour la note */}
         {showNotePopup && (
@@ -162,7 +292,7 @@ export const AdjustmentPanel = ({
               <div className="theme-modal-bg rounded-lg p-6 max-w-md w-full mx-4 theme-shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold theme-foreground-text">
-                    Ajouter une note
+                    {isEditing && isSentItem ? 'Modifier la note (article envoyé)' : 'Ajouter une note'}
                   </h3>
                   <button
                       onClick={handleNoteCancel}
@@ -176,6 +306,11 @@ export const AdjustmentPanel = ({
                   <div className="theme-foreground-text font-medium mb-2">
                     {currentItem.nom}
                   </div>
+                  {isEditing && isSentItem && (
+                      <div className="bg-orange-100 text-orange-800 text-sm p-2 rounded-lg mb-3">
+                        ⚠️ Cet article a déjà été envoyé en cuisine
+                      </div>
+                  )}
                   <textarea
                       value={tempNote}
                       onChange={(e) => setTempNote(e.target.value)}

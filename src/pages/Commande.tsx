@@ -23,9 +23,9 @@ const Commande = () => {
   // Déterminer le serviceType et zoneId
   const isEmporter = tableId?.startsWith('CMD');
   const serviceType = isEmporter ? 'TAKEAWAY' : 'DINING';
-  const zoneId = isEmporter ? 'emporter' : 'terrasse'; // TODO: récupérer vraie zoneId
+  const zoneId = isEmporter ? 'emporter' : 'terrasse';
 
-  // 🆕 Hook pour la gestion des commandes avec temps réel
+  // Hook pour la gestion des commandes avec temps réel
   const {
     currentOrder,
     currentOrderNumber,
@@ -42,7 +42,14 @@ const Commande = () => {
   const [activeMenuStep, setActiveMenuStep] = useState<string>('');
   const [currentMenu, setCurrentMenu] = useState<MenuItem | null>(null);
   const [menuConfig, setMenuConfig] = useState<MenuConfig>({});
-  const [editingItem, setEditingItem] = useState<{ id: string; nom: string; prix: number; quantite: number; note?: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<{
+    id: string;
+    nom: string;
+    prix: number;
+    quantite: number;
+    note?: string;
+    isSent?: boolean; // 🆕 Nouveau champ
+  } | null>(null);
 
   // Set first category as active when categories load
   useEffect(() => {
@@ -64,14 +71,12 @@ const Commande = () => {
   // Filtrer les articles par catégorie
   const filteredItems = useMemo(() => {
     if (isMenuConfig && activeMenuStep) {
-      // Pour menu composé, afficher les options de l'étape actuelle
-      // TODO: Logique pour menu composé
       return [];
     }
     return menuItems.filter(item => item.categorieId === activeCategory);
   }, [menuItems, activeCategory, isMenuConfig, activeMenuStep]);
 
-  // 🆕 Fonction pour valider et envoyer la commande
+  // Fonction pour valider et envoyer la commande
   const handleValidateOrder = async () => {
     const pendingItems = items.filter(item => !item.envoye);
 
@@ -80,7 +85,6 @@ const Commande = () => {
       return;
     }
 
-    // Préparer les items pour le service
     const orderItems = pendingItems.map(item => ({
       id: item.id,
       nom: item.nom,
@@ -93,13 +97,10 @@ const Commande = () => {
     try {
       console.log('🚀 Envoi des items vers la commande:', orderItems);
 
-      // Ajouter les items à la commande existante
       const success = await addItemsToCurrentOrder(orderItems);
 
       if (success) {
         console.log('✅ Items ajoutés avec succès à la commande');
-
-        // Marquer les items comme envoyés dans le cart local
         validateOrder();
       }
     } catch (error) {
@@ -110,14 +111,12 @@ const Commande = () => {
   const handleItemSelect = (item: MenuItem) => {
     console.log('🎯 handleItemSelect - item:', item);
 
-    // Toujours réinitialiser l'état d'édition et sélectionner le nouvel article
     setEditingItem(null);
     setSelectedItem(item);
 
     if (item.isComposedMenu && item.composedMenuConfig) {
       console.log('🎯 handleItemSelect - composedMenuConfig:', item.composedMenuConfig);
 
-      // Commencer la configuration du menu composé
       setIsMenuConfig(true);
       setCurrentMenu(item);
 
@@ -127,7 +126,6 @@ const Commande = () => {
       setActiveMenuStep(firstStepId);
       setMenuConfig({});
 
-      // Force un re-render pour déclencher filteredItems
       setTimeout(() => {
         console.log('🔄 Force re-render after menu config');
       }, 100);
@@ -136,10 +134,8 @@ const Commande = () => {
 
   const handleAddToCart = (item: MenuItem, quantity: number, note: string) => {
     if (isMenuConfig && currentMenu && activeMenuStep) {
-      // TODO: Logique pour menu composé
       setSelectedItem(null);
     } else {
-      // Article normal
       addItem({
         nom: item.nom,
         prix: item.prix,
@@ -163,28 +159,57 @@ const Commande = () => {
     setSelectedItem(null);
   };
 
-  const handleEditItem = (item: { id: string; nom: string; prix: number; quantite: number; note?: string }) => {
-    // Basculer vers le mode édition et effacer la sélection normale
+  // 🆕 Fonction mise à jour pour gérer les articles envoyés
+  const handleEditItem = (item: {
+    id: string;
+    nom: string;
+    prix: number;
+    quantite: number;
+    note?: string
+  }) => {
     setSelectedItem(null);
-    setEditingItem(item);
+
+    // 🆕 Déterminer si l'article est envoyé en vérifiant s'il fait partie de currentOrder
+    const isSent = currentOrder?.items?.some((orderItem, index) =>
+        `${currentOrder.id}-${index}` === item.id
+    ) || false;
+
+    setEditingItem({
+      ...item,
+      isSent
+    });
   };
 
   const handleUpdateItem = (id: string, quantity: number, note: string) => {
-    updateItem(id, quantity, note);
+    // Vérifier si c'est un article du cart local ou de la commande serveur
+    if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
+      // Article de la commande serveur - TODO: implémenter la mise à jour côté serveur
+      console.log('🔄 Mise à jour article serveur:', { id, quantity, note });
+      // Pour l'instant, on peut juste fermer le mode édition
+    } else {
+      // Article du cart local
+      updateItem(id, quantity, note);
+    }
     setEditingItem(null);
   };
 
   const handleCancelEditingItem = (id: string) => {
-    removeItem(id);
+    // Vérifier si c'est un article du cart local ou de la commande serveur
+    if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
+      // Article de la commande serveur - TODO: implémenter la suppression côté serveur
+      console.log('🗑️ Suppression article serveur:', id);
+      // Pour l'instant, on peut juste fermer le mode édition
+    } else {
+      // Article du cart local
+      removeItem(id);
+    }
     setEditingItem(null);
   };
 
   const getRetourPath = () => {
     if (tableId?.startsWith('CMD')) {
-      // Commande emporter - retour vers zones
       return `/${restaurantSlug}/zones`;
     }
-    // Pour les tables, retour vers zones (on pourrait améliorer pour retourner vers la zone spécifique)
     return `/${restaurantSlug}/zones`;
   };
 
@@ -242,7 +267,7 @@ const Commande = () => {
             </div>
           </div>
 
-          {/* 🆕 Bouton Terminer avec loading state */}
+          {/* Bouton Terminer avec loading state */}
           <button
               onClick={handleValidateOrder}
               disabled={pendingItemsCount === 0 || isAddingItems}
@@ -256,7 +281,7 @@ const Commande = () => {
           </button>
         </div>
 
-        {/* 🆕 Affichage des erreurs */}
+        {/* Affichage des erreurs */}
         {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-6 mt-2 rounded">
               {error}
@@ -292,7 +317,7 @@ const Commande = () => {
               onCancelItem={handleCancelEditingItem}
           />
 
-          {/* 🆕 Panier avec nouveau système */}
+          {/* Panier avec nouveau système */}
           <CartList
               onEditItem={handleEditItem}
               onValidateOrder={handleValidateOrder}
