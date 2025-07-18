@@ -6,7 +6,6 @@ import { ArticleGrid } from '../components/ArticleGrid';
 import { AdjustmentPanel } from '../components/AdjustmentPanel';
 import { CartList } from '../components/CartList';
 import { useCartStore } from '../stores/cartStore';
-import { useTables } from '../hooks/useTables';
 import { useMenuCategories } from '../hooks/useMenuCategories';
 import { useMenuItems } from '../hooks/useMenuItems';
 import type { MenuItem, MenuConfig } from '../types';

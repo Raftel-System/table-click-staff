@@ -151,7 +151,7 @@ export const AdjustmentPanel = ({
                   onClick={handleCancelItem}
                   className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
               >
-                Annuler
+                Supprimer
               </button>
           )}
         </div>

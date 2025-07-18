@@ -52,112 +52,118 @@ export const CartList = ({ onEditItem }: CartListProps) => {
   };
 
   return (
-      <div className="w-80 theme-header-bg p-4 flex flex-col h-full">
+      <div className="w-80 theme-header-bg flex flex-col h-full">
         {/* Header Panier */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold theme-foreground-text">Panier</h3>
-          <div className="theme-primary-text font-bold">
-            Total: {total.toFixed(2)}€
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold theme-foreground-text">Panier</h3>
+            <div className="theme-primary-text font-bold">
+              Total: {total.toFixed(2)}€
+            </div>
           </div>
         </div>
 
-        {/* Items en attente */}
-        <div className="flex-1 overflow-y-auto space-y-3">
-          {pendingItems.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold theme-secondary-text mb-2 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  En attente ({pendingItems.length})
-                </h4>
-                {pendingItems.map((item) => (
-                    <div
-                        key={item.id}
-                        className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => handleEditItem(item)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <div className="theme-foreground-text font-medium text-sm line-clamp-2">
-                            {item.nom}{formatMenuConfig(item.menuConfig)}
-                          </div>
-                          {item.note && (
-                              <div className="theme-secondary-text text-xs mt-1">
-                                Note: {item.note}
-                              </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Quantité et prix */}
-                      <div className="flex justify-between items-center">
-                        <div className="theme-foreground-text text-sm font-medium">
-                          Quantité: {item.quantite}
-                        </div>
-                        <div className="theme-primary-text font-semibold text-sm">
-                          {(item.prix * item.quantite).toFixed(2)}€
-                        </div>
-                      </div>
-                    </div>
-                ))}
-              </div>
-          )}
-
-          {/* Items envoyés */}
-          {sentItems.length > 0 && (
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-sm font-semibold theme-success-text flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Envoyés ({sentItems.length})
+        {/* Items scrollables */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          <div className="space-y-3">
+            {pendingItems.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold theme-secondary-text mb-2 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    En attente ({pendingItems.length})
                   </h4>
-                  <button
-                      onClick={clearSentItems}
-                      className="text-xs theme-secondary-text hover:theme-primary-text"
-                  >
-                    Effacer
-                  </button>
-                </div>
-                {sentItems.map((item) => (
-                    <div key={item.id} className="theme-menu-card p-3 rounded-lg opacity-75">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <div className="theme-foreground-text font-medium text-sm line-clamp-2">
-                            {item.nom}{formatMenuConfig(item.menuConfig)}
+                  {pendingItems.map((item) => (
+                      <div
+                          key={item.id}
+                          className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => handleEditItem(item)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                              {item.nom}{formatMenuConfig(item.menuConfig)}
+                            </div>
+                            {item.note && (
+                                <div className="theme-secondary-text text-xs mt-1">
+                                  Note: {item.note}
+                                </div>
+                            )}
                           </div>
-                          {item.note && (
-                              <div className="theme-secondary-text text-xs mt-1">
-                                Note: {item.note}
-                              </div>
-                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <div className="theme-foreground-text text-sm">x{item.quantite}</div>
-                            <div className="theme-success-text text-xs">✓ Envoyé</div>
+
+                        {/* Quantité et prix */}
+                        <div className="flex justify-between items-center">
+                          <div className="theme-foreground-text text-sm font-medium">
+                            Quantité: {item.quantite}
+                          </div>
+                          <div className="theme-primary-text font-semibold text-sm">
+                            {(item.prix * item.quantite).toFixed(2)}€
                           </div>
                         </div>
                       </div>
-                    </div>
-                ))}
-              </div>
-          )}
+                  ))}
+                </div>
+            )}
 
-          {items.length === 0 && (
-              <div className="text-center theme-secondary-text text-sm py-8">
-                Panier vide
-              </div>
-          )}
+            {/* Items envoyés */}
+            {sentItems.length > 0 && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-semibold theme-success-text flex items-center gap-2">
+                      <Check className="w-4 h-4" />
+                      Envoyés ({sentItems.length})
+                    </h4>
+                    <button
+                        onClick={clearSentItems}
+                        className="text-xs theme-secondary-text hover:theme-primary-text"
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                  {sentItems.map((item) => (
+                      <div key={item.id} className="theme-menu-card p-3 rounded-lg opacity-75">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                              {item.nom}{formatMenuConfig(item.menuConfig)}
+                            </div>
+                            {item.note && (
+                                <div className="theme-secondary-text text-xs mt-1">
+                                  Note: {item.note}
+                                </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <div className="theme-foreground-text text-sm">x{item.quantite}</div>
+                              <div className="theme-success-text text-xs">✓ Envoyé</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                  ))}
+                </div>
+            )}
+
+            {items.length === 0 && (
+                <div className="text-center theme-secondary-text text-sm py-8">
+                  Panier vide
+                </div>
+            )}
+          </div>
         </div>
 
-        {/* Bouton Valider */}
-        {pendingItems.length > 0 && (
-            <button
-                onClick={validateOrder}
-                className="theme-button-primary py-4 rounded-lg font-semibold mt-4"
-            >
-              Valider Commande
-            </button>
-        )}
+        {/* Footer fixe avec bouton Valider */}
+        <div className="p-4 border-t border-gray-200">
+          {pendingItems.length > 0 && (
+              <button
+                  onClick={validateOrder}
+                  className="w-full theme-button-primary py-4 rounded-lg font-semibold"
+              >
+                Valider Commande
+              </button>
+          )}
+        </div>
 
         <CancelModal
             isOpen={cancelModal.isOpen}
