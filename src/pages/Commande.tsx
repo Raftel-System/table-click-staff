@@ -8,16 +8,33 @@ import { CartList } from '../components/CartList';
 import { useCartStore } from '../stores/cartStore';
 import { useMenuCategories } from '../hooks/useMenuCategories';
 import { useMenuItems } from '../hooks/useMenuItems';
+import { useOrder } from '../hooks/useOrder';
 import type { MenuItem, MenuConfig } from '../types';
 
 const Commande = () => {
   const { restaurantSlug, tableId } = useParams<{ restaurantSlug: string; tableId: string }>();
   const navigate = useNavigate();
-  const { addItem, updateItem, removeItem, loadExistingItems } = useCartStore();
+  const { addItem, updateItem, removeItem, items, validateOrder } = useCartStore();
 
   // Firebase hooks
   const { categories, loading: categoriesLoading } = useMenuCategories(restaurantSlug || '');
   const { menuItems, loading: itemsLoading } = useMenuItems(restaurantSlug || '');
+
+  // Déterminer le serviceType et zoneId
+  const isEmporter = tableId?.startsWith('CMD');
+  const serviceType = isEmporter ? 'TAKEAWAY' : 'DINING';
+  const zoneId = isEmporter ? 'emporter' : 'terrasse'; // TODO: récupérer vraie zoneId
+
+  // 🆕 Hook pour la gestion des commandes avec temps réel
+  const {
+    currentOrder,
+    currentOrderNumber,
+    addItemsToCurrentOrder,
+    isLoadingOrder,
+    isAddingItems,
+    error,
+    clearError
+  } = useOrder(restaurantSlug || '', tableId, serviceType, zoneId);
 
   const [activeCategory, setActiveCategory] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -34,6 +51,16 @@ const Commande = () => {
     }
   }, [categories, activeCategory]);
 
+  // Effacer les erreurs après un délai
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        clearError();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
+
   // Filtrer les articles par catégorie
   const filteredItems = useMemo(() => {
     if (isMenuConfig && activeMenuStep) {
@@ -43,6 +70,42 @@ const Commande = () => {
     }
     return menuItems.filter(item => item.categorieId === activeCategory);
   }, [menuItems, activeCategory, isMenuConfig, activeMenuStep]);
+
+  // 🆕 Fonction pour valider et envoyer la commande
+  const handleValidateOrder = async () => {
+    const pendingItems = items.filter(item => !item.envoye);
+
+    if (pendingItems.length === 0) {
+      console.log("Aucun article à envoyer !");
+      return;
+    }
+
+    // Préparer les items pour le service
+    const orderItems = pendingItems.map(item => ({
+      id: item.id,
+      nom: item.nom,
+      prix: item.prix,
+      quantite: item.quantite,
+      note: item.note,
+      menuConfig: item.menuConfig
+    }));
+
+    try {
+      console.log('🚀 Envoi des items vers la commande:', orderItems);
+
+      // Ajouter les items à la commande existante
+      const success = await addItemsToCurrentOrder(orderItems);
+
+      if (success) {
+        console.log('✅ Items ajoutés avec succès à la commande');
+
+        // Marquer les items comme envoyés dans le cart local
+        validateOrder();
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi de la commande:', error);
+    }
+  };
 
   const handleItemSelect = (item: MenuItem) => {
     console.log('🎯 handleItemSelect - item:', item);
@@ -130,14 +193,14 @@ const Commande = () => {
       return {
         zone: 'Emporter',
         table: '',
-        numero: tableId.replace('CMD-', '#')
+        numero: currentOrderNumber
       };
     }
 
     return {
       zone: 'Table',
       table: tableId ? `Table ${tableId}` : '',
-      numero: '#1247'
+      numero: currentOrderNumber
     };
   };
 
@@ -151,6 +214,7 @@ const Commande = () => {
   }
 
   const headerInfo = getHeaderInfo();
+  const pendingItemsCount = items.filter(item => !item.envoye).length;
 
   return (
       <div className="flex flex-col h-screen theme-bg-gradient">
@@ -178,10 +242,26 @@ const Commande = () => {
             </div>
           </div>
 
-          <button className="theme-button-primary px-6 py-2 rounded-lg">
-            Terminer
+          {/* 🆕 Bouton Terminer avec loading state */}
+          <button
+              onClick={handleValidateOrder}
+              disabled={pendingItemsCount === 0 || isAddingItems}
+              className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                  pendingItemsCount > 0 && !isAddingItems
+                      ? 'theme-button-primary'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+          >
+            {isAddingItems ? 'Envoi...' : `Envoyer (${pendingItemsCount})`}
           </button>
         </div>
+
+        {/* 🆕 Affichage des erreurs */}
+        {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-6 mt-2 rounded">
+              {error}
+            </div>
+        )}
 
         {/* Content */}
         <div className="flex flex-1">
@@ -212,8 +292,14 @@ const Commande = () => {
               onCancelItem={handleCancelEditingItem}
           />
 
-          {/* Panier */}
-          <CartList onEditItem={handleEditItem} />
+          {/* 🆕 Panier avec nouveau système */}
+          <CartList
+              onEditItem={handleEditItem}
+              onValidateOrder={handleValidateOrder}
+              isValidating={isAddingItems}
+              currentOrder={currentOrder}
+              isLoadingOrder={isLoadingOrder}
+          />
         </div>
       </div>
   );

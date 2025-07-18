@@ -84,7 +84,7 @@ export interface CommandeEmporter {
 export interface Zone {
   id: string;
   nom: string;
-  serviceType: 'SALLE' | 'TAKEAWAY';
+  serviceType: 'DINING' | 'TAKEAWAY';
   active: boolean;
   ordre: number;
 

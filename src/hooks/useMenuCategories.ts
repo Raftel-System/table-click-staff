@@ -23,7 +23,6 @@ export const useMenuCategories = (restaurantSlug: string) => {
             }
 
             try {
-                console.log('🔥 Fetching categories for:', restaurantSlug);
                 const categoriesRef = collection(db, `restaurants/${restaurantSlug}/menuCategories`);
                 const q = query(
                     categoriesRef,
@@ -42,8 +41,6 @@ export const useMenuCategories = (restaurantSlug: string) => {
 
                 // Sort by ordre manually
                 categoriesData.sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
-
-                console.log('🔥 Categories fetched:', categoriesData);
                 setCategories(categoriesData);
                 setLoading(false);
                 setError(null);

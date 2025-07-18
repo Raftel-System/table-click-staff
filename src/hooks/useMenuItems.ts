@@ -49,7 +49,6 @@ export const useMenuItems = (restaurantSlug: string) => {
             }
 
             try {
-                console.log('🔥 Fetching menu items for:', restaurantSlug);
                 const itemsRef = collection(db, `restaurants/${restaurantSlug}/menuItems`);
                 const q = query(
                     itemsRef,
@@ -69,7 +68,6 @@ export const useMenuItems = (restaurantSlug: string) => {
                 // Sort by ordre manually
                 itemsData.sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
-                console.log('🔥 Menu items fetched:', itemsData);
                 setMenuItems(itemsData);
                 setLoading(false);
                 setError(null);

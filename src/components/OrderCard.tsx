@@ -4,13 +4,14 @@ import type {CommandeEmporter} from '../types';
 
 interface OrderCardProps {
   order: CommandeEmporter;
+  restaurantSlug: string;
 }
 
-export const OrderCard = ({ order }: OrderCardProps) => {
+export const OrderCard = ({ order, restaurantSlug }: OrderCardProps) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/commande/emporter/${order.id}`);
+    navigate(`/${restaurantSlug}/commande/emporter/${order.id}`);
   };
 
   const getStatusColor = () => {
@@ -56,33 +57,33 @@ export const OrderCard = ({ order }: OrderCardProps) => {
   };
 
   return (
-    <div
-      onClick={handleClick}
-      className={`
+      <div
+          onClick={handleClick}
+          className={`
         theme-menu-card rounded-lg p-4 h-32 w-48 flex flex-col justify-between
         cursor-pointer transition-all duration-300 ${getStatusColor()}
       `}
-    >
-      <div className="flex justify-between items-start">
-        <h3 className="text-lg font-bold theme-foreground-text">
-          #{order.numero}
-        </h3>
-        <Package className="w-5 h-5 theme-primary-text" />
-      </div>
-      
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 theme-secondary-text text-sm">
-          <Clock className="w-4 h-4" />
-          <span>{order.heure}</span>
+      >
+        <div className="flex justify-between items-start">
+          <h3 className="text-lg font-bold theme-foreground-text">
+            #{order.numero}
+          </h3>
+          <Package className="w-5 h-5 theme-primary-text" />
         </div>
-        <div className="theme-secondary-text text-xs">
-          Durée: {formatDuration(order.duree)}
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 theme-secondary-text text-sm">
+            <Clock className="w-4 h-4" />
+            <span>{order.heure}</span>
+          </div>
+          <div className="theme-secondary-text text-xs">
+            Durée: {formatDuration(order.duree)}
+          </div>
+        </div>
+
+        <div className={`text-xs font-semibold ${getStatusTextColor()}`}>
+          {getStatusText()}
         </div>
       </div>
-      
-      <div className={`text-xs font-semibold ${getStatusTextColor()}`}>
-        {getStatusText()}
-      </div>
-    </div>
   );
 };

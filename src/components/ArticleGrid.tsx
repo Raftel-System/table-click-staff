@@ -7,7 +7,6 @@ interface ArticleGridProps {
 }
 
 export const ArticleGrid = ({ items, onItemSelect }: ArticleGridProps) => {
-    console.log(items);
     return (
         <div className="flex-1 p-2 pr-1 overflow-y-auto">
             <div className="grid grid-cols-3 gap-0">

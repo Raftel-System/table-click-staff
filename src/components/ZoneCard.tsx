@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 interface Zone {
   id: string;
   nom: string;
-  serviceType: 'SALLE' | 'TAKEAWAY';
+  serviceType: 'DINING' | 'TAKEAWAY';
   active: boolean;
   ordre: number;
 }
@@ -38,7 +38,7 @@ export const ZoneCard = ({ zone, restaurantSlug }: ZoneCardProps) => {
       </p> */}
 
         <p className="theme-secondary-text text-sm">
-          {zone.serviceType === 'SALLE' ? 'Service en salle' : 'À emporter'}
+          {zone.serviceType === 'DINING' ? 'Service en salle' : 'À emporter'}
         </p>
       </div>
   );

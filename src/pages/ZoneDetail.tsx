@@ -37,7 +37,7 @@ const ZoneDetail = () => {
     };
 
     const renderContent = () => {
-        if (currentZone.serviceType === 'SALLE') {
+        if (currentZone.serviceType === 'DINING') {
             // Zone avec tables
             const tablesLibres = tables.filter(t => t.statut === 'LIBRE');
             const tablesOccupees = tables.filter(t => t.statut === 'OCCUPEE');
