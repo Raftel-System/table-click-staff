@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { CategoryNav } from '../components/CategoryNav';
 import { ArticleGrid } from '../components/ArticleGrid';
 import { AdjustmentPanel } from '../components/AdjustmentPanel';
@@ -11,10 +11,67 @@ import { useMenuItems } from '../hooks/useMenuItems';
 import { useOrder } from '../hooks/useOrder';
 import type { MenuItem, MenuConfig } from '../types';
 
+// 🆕 Composant Modal de confirmation
+const TerminateOrderModal = ({
+                               isOpen,
+                               onClose,
+                               onConfirm,
+                               isLoading,
+                               orderNumber,
+                               tableInfo
+                             }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+  orderNumber: string;
+  tableInfo: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+      <div className="fixed inset-0 theme-backdrop flex items-center justify-center z-50">
+        <div className="theme-modal-bg rounded-lg p-6 max-w-md w-full mx-4 theme-shadow-lg">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-lg font-semibold theme-foreground-text mb-2">
+                Terminer la commande
+              </h3>
+              <p className="theme-secondary-text text-sm mb-3">
+                Vous êtes sur le point de terminer définitivement la commande <strong>{orderNumber}</strong> pour <strong>{tableInfo}</strong>.
+              </p>
+              <div className="bg-orange-50 border border-orange-200 text-orange-800 text-sm p-3 rounded-lg">
+                ⚠️ Cette action est irréversible. La commande sera marquée comme terminée et la session sera fermée.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+                onClick={onClose}
+                disabled={isLoading}
+                className="flex-1 theme-button-secondary py-2 px-4 rounded-lg disabled:opacity-50"
+            >
+              Annuler
+            </button>
+            <button
+                onClick={onConfirm}
+                disabled={isLoading}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors disabled:opacity-50"
+            >
+              {isLoading ? 'Finalisation...' : 'Terminer'}
+            </button>
+          </div>
+        </div>
+      </div>
+  );
+};
+
 const Commande = () => {
   const { restaurantSlug, tableId } = useParams<{ restaurantSlug: string; tableId: string }>();
   const navigate = useNavigate();
-  const { addItem, updateItem, removeItem, items, validateOrder } = useCartStore();
+  const { addItem, updateItem, removeItem, items, validateOrder, clearCart } = useCartStore();
 
   // Firebase hooks
   const { categories, loading: categoriesLoading } = useMenuCategories(restaurantSlug || '');
@@ -30,6 +87,8 @@ const Commande = () => {
     currentOrder,
     currentOrderNumber,
     addItemsToCurrentOrder,
+    updateOrderStatus,
+    clearCurrentSession,
     isLoadingOrder,
     isAddingItems,
     error,
@@ -48,8 +107,12 @@ const Commande = () => {
     prix: number;
     quantite: number;
     note?: string;
-    isSent?: boolean; // 🆕 Nouveau champ
+    isSent?: boolean;
   } | null>(null);
+
+  // 🆕 États pour le modal de confirmation
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
 
   // Set first category as active when categories load
   useEffect(() => {
@@ -76,8 +139,8 @@ const Commande = () => {
     return menuItems.filter(item => item.categorieId === activeCategory);
   }, [menuItems, activeCategory, isMenuConfig, activeMenuStep]);
 
-  // Fonction pour valider et envoyer la commande
-  const handleValidateOrder = async () => {
+  // 🆕 Fonction pour envoyer des articles (différente de terminer)
+  const handleSendItems = async () => {
     const pendingItems = items.filter(item => !item.envoye);
 
     if (pendingItems.length === 0) {
@@ -105,6 +168,54 @@ const Commande = () => {
       }
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi de la commande:', error);
+    }
+  };
+
+  // 🆕 Fonction pour terminer définitivement la commande
+  const handleTerminateOrder = async () => {
+    if (!currentOrder) {
+      console.error('❌ Pas de commande active à terminer');
+      return;
+    }
+
+    setIsTerminating(true);
+
+    try {
+      // 1. D'abord envoyer les articles en attente s'il y en a
+      const pendingItems = items.filter(item => !item.envoye);
+      if (pendingItems.length > 0) {
+        console.log('📤 Envoi des articles en attente avant finalisation...');
+        await handleSendItems();
+
+        // Attendre un peu pour que les items soient bien ajoutés
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // 2. Changer le statut à "served" (commande terminée)
+      console.log('🏁 Finalisation de la commande...');
+      await updateOrderStatus('served');
+
+      // 3. Sauvegarder dans Firestore (si nécessaire - déjà fait par le service)
+      console.log('💾 Commande sauvegardée dans Firestore');
+
+      // 4. Nettoyer la session
+      console.log('🧹 Nettoyage de la session...');
+      await clearCurrentSession();
+
+      // 5. Nettoyer le panier local
+      clearCart();
+
+      console.log('✅ Commande terminée avec succès !');
+
+      // 6. Rediriger vers la page d'accueil
+      navigate(`/${restaurantSlug}/zones`);
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la finalisation:', error);
+      // Vous pourriez afficher un message d'erreur à l'utilisateur ici
+    } finally {
+      setIsTerminating(false);
+      setShowTerminateModal(false);
     }
   };
 
@@ -159,7 +270,6 @@ const Commande = () => {
     setSelectedItem(null);
   };
 
-  // 🆕 Fonction mise à jour pour gérer les articles envoyés
   const handleEditItem = (item: {
     id: string;
     nom: string;
@@ -169,7 +279,6 @@ const Commande = () => {
   }) => {
     setSelectedItem(null);
 
-    // 🆕 Déterminer si l'article est envoyé en vérifiant s'il fait partie de currentOrder
     const isSent = currentOrder?.items?.some((orderItem, index) =>
         `${currentOrder.id}-${index}` === item.id
     ) || false;
@@ -181,35 +290,24 @@ const Commande = () => {
   };
 
   const handleUpdateItem = (id: string, quantity: number, note: string) => {
-    // Vérifier si c'est un article du cart local ou de la commande serveur
     if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
-      // Article de la commande serveur - TODO: implémenter la mise à jour côté serveur
       console.log('🔄 Mise à jour article serveur:', { id, quantity, note });
-      // Pour l'instant, on peut juste fermer le mode édition
     } else {
-      // Article du cart local
       updateItem(id, quantity, note);
     }
     setEditingItem(null);
   };
 
   const handleCancelEditingItem = (id: string) => {
-    // Vérifier si c'est un article du cart local ou de la commande serveur
     if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
-      // Article de la commande serveur - TODO: implémenter la suppression côté serveur
       console.log('🗑️ Suppression article serveur:', id);
-      // Pour l'instant, on peut juste fermer le mode édition
     } else {
-      // Article du cart local
       removeItem(id);
     }
     setEditingItem(null);
   };
 
   const getRetourPath = () => {
-    if (tableId?.startsWith('CMD')) {
-      return `/${restaurantSlug}/zones`;
-    }
     return `/${restaurantSlug}/zones`;
   };
 
@@ -218,14 +316,19 @@ const Commande = () => {
       return {
         zone: 'Emporter',
         table: '',
-        numero: currentOrderNumber
+        numero: currentOrderNumber,
+        fullInfo: 'Emporter'
       };
     }
 
+    // Extraire le numéro de table du tableId (ex: "T2" -> "2")
+    const tableNumber = tableId?.replace(/^T/, '') || '';
+    const tableInfo = tableNumber ? `Table ${tableNumber}` : '';
     return {
       zone: 'Table',
-      table: tableId ? `Table ${tableId}` : '',
-      numero: currentOrderNumber
+      table: tableInfo,
+      numero: currentOrderNumber,
+      fullInfo: tableInfo
     };
   };
 
@@ -240,11 +343,12 @@ const Commande = () => {
 
   const headerInfo = getHeaderInfo();
   const pendingItemsCount = items.filter(item => !item.envoye).length;
+  const hasActiveOrder = currentOrder && currentOrder.items && currentOrder.items.length > 0;
 
   return (
-      <div className="flex flex-col h-screen theme-bg-gradient">
+      <div className="flex flex-col h-screen theme-bg-gradient overflow-hidden">
         {/* Top navbar */}
-        <div className="theme-header-bg h-15 flex items-center justify-between px-6">
+        <div className="theme-header-bg h-15 flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-4">
             <button
                 onClick={() => navigate(getRetourPath())}
@@ -267,29 +371,29 @@ const Commande = () => {
             </div>
           </div>
 
-          {/* Bouton Terminer avec loading state */}
+          {/* 🆕 Bouton Terminer la commande */}
           <button
-              onClick={handleValidateOrder}
-              disabled={pendingItemsCount === 0 || isAddingItems}
+              onClick={() => setShowTerminateModal(true)}
+              disabled={!hasActiveOrder && pendingItemsCount === 0}
               className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                  pendingItemsCount > 0 && !isAddingItems
-                      ? 'theme-button-primary'
+                  (hasActiveOrder || pendingItemsCount > 0)
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
           >
-            {isAddingItems ? 'Envoi...' : `Envoyer (${pendingItemsCount})`}
+            Terminer la commande
           </button>
         </div>
 
         {/* Affichage des erreurs */}
         {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-6 mt-2 rounded">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-6 mt-2 rounded flex-shrink-0">
               {error}
             </div>
         )}
 
         {/* Content */}
-        <div className="flex flex-1">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Catégories */}
           <CategoryNav
               categories={categories}
@@ -317,15 +421,25 @@ const Commande = () => {
               onCancelItem={handleCancelEditingItem}
           />
 
-          {/* Panier avec nouveau système */}
+          {/* 🔄 Panier avec fonction d'envoi séparée */}
           <CartList
               onEditItem={handleEditItem}
-              onValidateOrder={handleValidateOrder}
+              onValidateOrder={handleSendItems}
               isValidating={isAddingItems}
               currentOrder={currentOrder}
               isLoadingOrder={isLoadingOrder}
           />
         </div>
+
+        {/* 🆕 Modal de confirmation */}
+        <TerminateOrderModal
+            isOpen={showTerminateModal}
+            onClose={() => setShowTerminateModal(false)}
+            onConfirm={handleTerminateOrder}
+            isLoading={isTerminating}
+            orderNumber={currentOrderNumber}
+            tableInfo={headerInfo.fullInfo}
+        />
       </div>
   );
 };

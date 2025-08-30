@@ -72,9 +72,9 @@ export const CartList = ({
     };
 
     return (
-        <div className="w-80 theme-header-bg flex flex-col h-full">
-            {/* Header Panier */}
-            <div className="p-4 border-b border-gray-200">
+        <div className="w-80 theme-header-bg flex flex-col h-screen border-l border-gray-200">
+            {/* Header Panier - FIXE */}
+            <div className="p-4 border-b border-gray-200 theme-header-bg flex-shrink-0">
                 <div className="flex justify-between items-center">
                     <h3 className="font-bold theme-foreground-text">
                         {orderNumber}
@@ -85,103 +85,39 @@ export const CartList = ({
                 </div>
             </div>
 
-            {/* Items scrollables */}
-            <div className="flex-1 p-4 overflow-y-auto">
-                <div className="space-y-3">
+            {/* Container pour le scroll - CRITIQUE */}
+            <div className="flex-1 min-h-0 relative">
+                {/* Zone scrollable avec hauteur forcée */}
+                <div className="absolute inset-0 overflow-y-auto">
+                    <div className="p-4">
+                        {/* Loading state initial */}
+                        {isLoadingOrder && (
+                            <div className="text-center theme-secondary-text text-sm py-8">
+                                Initialisation de la commande...
+                            </div>
+                        )}
 
-                    {/* Loading state initial */}
-                    {isLoadingOrder && (
-                        <div className="text-center theme-secondary-text text-sm py-8">
-                            Initialisation de la commande...
-                        </div>
-                    )}
+                        {/* Affichage séparé des articles */}
+                        {!isLoadingOrder && (
+                            <div className="space-y-3">
+                                {/* Section articles en attente */}
+                                {pendingItems.length > 0 && (
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-semibold theme-secondary-text mb-3 flex items-center gap-2">
+                                            <Clock className="w-4 h-4" />
+                                            En attente ({pendingItems.length})
+                                        </h4>
 
-                    {/* Affichage séparé des articles */}
-                    {!isLoadingOrder && (
-                        <div>
-                            {/* Section articles en attente */}
-                            {pendingItems.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="text-sm font-semibold theme-secondary-text mb-3 flex items-center gap-2">
-                                        <Clock className="w-4 h-4" />
-                                        En attente ({pendingItems.length})
-                                    </h4>
-
-                                    {pendingItems.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors mb-2"
-                                            onClick={() => handleEditItem(item)}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex-1">
-                                                    <div className="theme-foreground-text font-medium text-sm line-clamp-2">
-                                                        {item.nom}{formatMenuConfig(item.menuConfig)}
-                                                    </div>
-                                                    {item.note && (
-                                                        <div className="theme-secondary-text text-xs mt-1">
-                                                            Note: {item.note}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <div className="theme-foreground-text text-sm font-medium">
-                                                    Quantité: {item.quantite}
-                                                </div>
-                                                <div className="theme-primary-text font-semibold text-sm">
-                                                    {(item.prix * item.quantite).toFixed(2)}€
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Section articles envoyés */}
-                            {currentOrder?.items && currentOrder.items.length > 0 && (
-                                <div className="mb-4">
-                                    <h4 className="text-sm font-semibold theme-success-text mb-2 flex items-center gap-2">
-                                        <Check className="w-4 h-4" />
-                                        Envoyé • {currentOrder.status}
-                                    </h4>
-                                    <div className="text-xs theme-secondary-text mb-3">
-                                        Créé à {new Date(currentOrder.createdAt).toLocaleTimeString('fr-FR', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                        {currentOrder.lastUpdated && (
-                                            <span> • Mis à jour à {new Date(currentOrder.lastUpdated).toLocaleTimeString('fr-FR', {
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}</span>
-                                        )}
-                                    </div>
-
-                                    {currentOrder.items.map((item, index) => {
-                                        const serverItem = {
-                                            id: `${currentOrder.id}-${index}`,
-                                            nom: item.nom,
-                                            prix: item.prix,
-                                            quantite: item.quantite,
-                                            note: item.note,
-                                            menuConfig: item.menuConfig
-                                        };
-
-                                        return (
+                                        {pendingItems.map((item) => (
                                             <div
-                                                key={serverItem.id}
-                                                className="theme-menu-card p-3 rounded-lg cursor-pointer transition-colors mb-2 opacity-90 border-l-4 border-green-500"
-                                                onClick={() => handleEditItem(serverItem)}
+                                                key={item.id}
+                                                className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors mb-2"
+                                                onClick={() => handleEditItem(item)}
                                             >
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="theme-foreground-text font-medium text-sm line-clamp-2">
-                                                                {item.nom}{formatMenuConfig(item.menuConfig)}
-                                                            </div>
-                                                            <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                                        <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                                                            {item.nom}{formatMenuConfig(item.menuConfig)}
                                                         </div>
                                                         {item.note && (
                                                             <div className="theme-secondary-text text-xs mt-1">
@@ -200,24 +136,100 @@ export const CartList = ({
                                                     </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                        ))}
+                                    </div>
+                                )}
 
-                    {/* Message si complètement vide */}
-                    {!isLoadingOrder && pendingItems.length === 0 && (!currentOrder?.items || currentOrder.items.length === 0) && (
-                        <div className="text-center theme-secondary-text text-sm py-8">
-                            Aucun article
-                        </div>
-                    )}
+                                {/* Section articles envoyés */}
+                                {currentOrder?.items && currentOrder.items.length > 0 && (
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-semibold theme-success-text mb-2 flex items-center gap-2">
+                                            <Check className="w-4 h-4" />
+                                            Envoyé • {currentOrder.status}
+                                        </h4>
+                                        <div className="text-xs theme-secondary-text mb-3">
+                                            Créé à {new Date(currentOrder.createdAt).toLocaleTimeString('fr-FR', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                            {currentOrder.lastUpdated && (
+                                                <span> • Mis à jour à {new Date(currentOrder.lastUpdated).toLocaleTimeString('fr-FR', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}</span>
+                                            )}
+                                        </div>
+
+                                        {currentOrder.items.map((item, index) => {
+                                            const serverItem = {
+                                                id: `${currentOrder.id}-${index}`,
+                                                nom: item.nom,
+                                                prix: item.prix,
+                                                quantite: item.quantite,
+                                                note: item.note,
+                                                menuConfig: item.menuConfig
+                                            };
+
+                                            return (
+                                                <div
+                                                    key={serverItem.id}
+                                                    className="theme-menu-card p-3 rounded-lg cursor-pointer transition-colors mb-2 opacity-90 border-l-4 border-green-500"
+                                                    onClick={() => handleEditItem(serverItem)}
+                                                >
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="theme-foreground-text font-medium text-sm line-clamp-2">
+                                                                    {item.nom}{formatMenuConfig(item.menuConfig)}
+                                                                </div>
+                                                                <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                                            </div>
+                                                            {item.note && (
+                                                                <div className="theme-secondary-text text-xs mt-1">
+                                                                    Note: {item.note}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="theme-foreground-text text-sm font-medium">
+                                                            Quantité: {item.quantite}
+                                                        </div>
+                                                        <div className="theme-primary-text font-semibold text-sm">
+                                                            {(item.prix * item.quantite).toFixed(2)}€
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Message si complètement vide */}
+                                {!isLoadingOrder && pendingItems.length === 0 && (!currentOrder?.items || currentOrder.items.length === 0) && (
+                                    <div className="text-center theme-secondary-text text-sm py-8">
+                                        Aucun article
+                                    </div>
+                                )}
+
+                                {/* ÉLÉMENTS DE TEST POUR LE SCROLL - À SUPPRIMER EN PRODUCTION */}
+                                {/* Décommentez pour tester le scroll */}
+                                {/*
+                                {Array.from({ length: 10 }, (_, i) => (
+                                    <div key={`test-${i}`} className="bg-red-100 p-3 rounded mb-2">
+                                        Test scroll item {i + 1}
+                                    </div>
+                                ))}
+                                */}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Footer fixe avec bouton ENVOYER */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="px-4 pt-2 pb-15 border-t border-gray-200 theme-header-bg flex-shrink-0">
                 {pendingItems.length > 0 && (
                     <button
                         onClick={handleSendOrder}
