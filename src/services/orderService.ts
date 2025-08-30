@@ -110,8 +110,6 @@ class OrderService {
                         items: Array.isArray(existingOrder.items) ? existingOrder.items : [],
                         total: typeof existingOrder.total === 'number' ? existingOrder.total : 0
                     };
-
-                    console.log('📋 Commande existante récupérée:', secureOrder);
                     return secureOrder;
                 }
             }

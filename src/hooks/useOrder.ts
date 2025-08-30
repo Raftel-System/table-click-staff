@@ -23,7 +23,7 @@ export const useOrder = (
             setError(null);
 
             try {
-                console.log('🚀 Initialisation commande pour:', { restaurantSlug, tableId, serviceType, zoneId });
+
 
                 const sessionOrder = await orderService.getOrCreateSessionOrder(
                     restaurantSlug,
@@ -41,7 +41,6 @@ export const useOrder = (
                     sessionOrder.id,
                     (updatedOrder) => {
                         if (updatedOrder) {
-                            console.log('🔄 Commande mise à jour en temps réel:', updatedOrder.number);
                             setCurrentOrder(updatedOrder);
                         }
                     }

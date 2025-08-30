@@ -9,9 +9,10 @@ import { useCartStore } from '../stores/cartStore';
 import { useMenuCategories } from '../hooks/useMenuCategories';
 import { useMenuItems } from '../hooks/useMenuItems';
 import { useOrder } from '../hooks/useOrder';
-import type { MenuItem, MenuConfig } from '../types';
+import { useZones } from '@/hooks/useZones';
+import type { MenuItem, MenuConfig } from '@/types';
 
-// 🆕 Composant Modal de confirmation
+// Composant Modal de confirmation
 const TerminateOrderModal = ({
                                isOpen,
                                onClose,
@@ -76,11 +77,76 @@ const Commande = () => {
   // Firebase hooks
   const { categories, loading: categoriesLoading } = useMenuCategories(restaurantSlug || '');
   const { menuItems, loading: itemsLoading } = useMenuItems(restaurantSlug || '');
+  const { zones, loading: zonesLoading } = useZones(restaurantSlug || '');
+
+  // États pour la table et zone trouvées
+  const [tableInfo, setTableInfo] = useState<{table: any, zone: any} | null>(null);
+  const [tableSearchLoading, setTableSearchLoading] = useState(true);
+
+  // Effet pour trouver la table et sa zone
+  useEffect(() => {
+    const findTableAndZone = async () => {
+      if (!restaurantSlug || !tableId || tableId.startsWith('CMD') || zones.length === 0) {
+        setTableSearchLoading(false);
+        return;
+      }
+
+      try {
+        // Importer les fonctions Firebase nécessaires
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+
+        // Chercher la table spécifique dans toutes les tables
+        const tablesRef = collection(db, `restaurants/${restaurantSlug}/tables`);
+        const tableQuery = query(
+            tablesRef,
+            where('active', '==', true)
+        );
+
+        const tablesSnapshot = await getDocs(tableQuery);
+        let foundTable = null;
+
+        tablesSnapshot.forEach((doc) => {
+          if (doc.id === tableId) {
+            foundTable = {
+              id: doc.id,
+              ...doc.data()
+            };
+          }
+        });
+
+        if (foundTable) {
+          // Trouver la zone correspondante
+          const correspondingZone = zones.find(z => z.id === foundTable.zoneId);
+          setTableInfo({ table: foundTable, zone: correspondingZone });
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la recherche de table:', error);
+      }
+
+      setTableSearchLoading(false);
+    };
+
+    findTableAndZone();
+  }, [restaurantSlug, tableId, zones]);
 
   // Déterminer le serviceType et zoneId
   const isEmporter = tableId?.startsWith('CMD');
   const serviceType = isEmporter ? 'TAKEAWAY' : 'DINING';
-  const zoneId = isEmporter ? 'emporter' : 'terrasse';
+
+  let zoneId = 'terrasse'; // valeur par défaut
+  if (isEmporter) {
+    // Pour emporter, trouver la zone TAKEAWAY
+    const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
+    zoneId = takeawayZone?.id || 'emporter';
+  } else if (tableInfo?.zone) {
+    // Utiliser la vraie zone de la table
+    zoneId = tableInfo.zone.id;
+  } else if (zones.length > 0) {
+    // Utiliser la première zone DINING par défaut
+    const firstDiningZone = zones.find(z => z.serviceType === 'DINING');
+    zoneId = firstDiningZone?.id || 'terrasse';
+  }
 
   // Hook pour la gestion des commandes avec temps réel
   const {
@@ -110,7 +176,7 @@ const Commande = () => {
     isSent?: boolean;
   } | null>(null);
 
-  // 🆕 États pour le modal de confirmation
+  // États pour le modal de confirmation
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
 
@@ -139,7 +205,7 @@ const Commande = () => {
     return menuItems.filter(item => item.categorieId === activeCategory);
   }, [menuItems, activeCategory, isMenuConfig, activeMenuStep]);
 
-  // 🆕 Fonction pour envoyer des articles (différente de terminer)
+  // Fonction pour envoyer des articles (différente de terminer)
   const handleSendItems = async () => {
     const pendingItems = items.filter(item => !item.envoye);
 
@@ -171,7 +237,7 @@ const Commande = () => {
     }
   };
 
-  // 🆕 Fonction pour terminer définitivement la commande
+  // Fonction pour terminer définitivement la commande
   const handleTerminateOrder = async () => {
     if (!currentOrder) {
       console.error('❌ Pas de commande active à terminer');
@@ -313,27 +379,31 @@ const Commande = () => {
 
   const getHeaderInfo = () => {
     if (tableId?.startsWith('CMD')) {
+      // Pour les commandes à emporter
+      const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
       return {
-        zone: 'Emporter',
+        zone: takeawayZone?.nom || 'Emporter',
         table: '',
         numero: currentOrderNumber,
-        fullInfo: 'Emporter'
+        fullInfo: takeawayZone?.nom || 'Emporter',
       };
     }
 
-    // Extraire le numéro de table du tableId (ex: "T2" -> "2")
-    const tableNumber = tableId?.replace(/^T/, '') || '';
-    const tableInfo = tableNumber ? `Table ${tableNumber}` : '';
+    // Pour les tables - utiliser les données trouvées
+    const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
+    const tableNum = tableInfo?.table?.numero || 'inconnue';
+    const tableInfoStr = `Table ${tableNum}`;
+
     return {
-      zone: 'Table',
-      table: tableInfo,
+      zone: zoneName,
+      table: tableInfoStr,
       numero: currentOrderNumber,
-      fullInfo: tableInfo
+      fullInfo: `${zoneName} • ${tableInfoStr}`,
     };
   };
 
   // Loading states
-  if (categoriesLoading || itemsLoading) {
+  if (categoriesLoading || itemsLoading || zonesLoading || tableSearchLoading) {
     return (
         <div className="flex h-screen theme-bg-gradient items-center justify-center">
           <div className="text-xl theme-foreground-text">Chargement du menu...</div>
@@ -371,7 +441,7 @@ const Commande = () => {
             </div>
           </div>
 
-          {/* 🆕 Bouton Terminer la commande */}
+          {/* Bouton Terminer la commande */}
           <button
               onClick={() => setShowTerminateModal(true)}
               disabled={!hasActiveOrder && pendingItemsCount === 0}
@@ -421,7 +491,7 @@ const Commande = () => {
               onCancelItem={handleCancelEditingItem}
           />
 
-          {/* 🔄 Panier avec fonction d'envoi séparée */}
+          {/* Panier avec fonction d'envoi séparée */}
           <CartList
               onEditItem={handleEditItem}
               onValidateOrder={handleSendItems}
@@ -431,7 +501,7 @@ const Commande = () => {
           />
         </div>
 
-        {/* 🆕 Modal de confirmation */}
+        {/* Modal de confirmation */}
         <TerminateOrderModal
             isOpen={showTerminateModal}
             onClose={() => setShowTerminateModal(false)}
