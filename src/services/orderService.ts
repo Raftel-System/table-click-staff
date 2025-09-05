@@ -1,5 +1,6 @@
 import { rtDatabase } from '@/lib/firebase';
 import { ref, get, set, update, serverTimestamp, runTransaction, onValue, off } from 'firebase/database';
+import { printService } from './printService';
 
 export interface OrderItem {
     id: string;
@@ -152,6 +153,7 @@ class OrderService {
         newItems: OrderItem[]
     ): Promise<Order> {
         try {
+            // Code existant pour ajouter des items
             const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
 
             // Récupérer la commande actuelle
@@ -161,8 +163,6 @@ class OrderService {
             }
 
             const currentOrder = orderSnapshot.val() as Order;
-            console.log('📋 Commande actuelle récupérée:', currentOrder);
-            console.log('📋 Type de currentOrder.items:', typeof currentOrder.items, Array.isArray(currentOrder.items));
 
             // Nettoyer les nouveaux items
             const cleanedNewItems = newItems.map(item => {
@@ -186,31 +186,56 @@ class OrderService {
 
             // 🆕 Sécuriser l'accès aux items existants
             const existingItems = Array.isArray(currentOrder.items) ? currentOrder.items : [];
-            console.log('📋 Items existants:', existingItems);
-            console.log('📋 Nouveaux items nettoyés:', cleanedNewItems);
-
-            // Fusionner avec les items existants
             const updatedItems = [...existingItems, ...cleanedNewItems];
             const updatedTotal = updatedItems.reduce((sum, item) => sum + (item.prix * item.quantite), 0);
-
-            console.log('📋 Items mis à jour:', updatedItems);
-            console.log('📋 Total mis à jour:', updatedTotal);
 
             // Mettre à jour la commande
             const updatedOrder: Order = {
                 ...currentOrder,
                 items: updatedItems,
                 total: updatedTotal,
-                status: 'sent', // Changer le statut quand on ajoute des items
+                status: 'sent',
                 lastUpdated: new Date().toISOString()
             };
 
             const cleanedUpdatedOrder = this.cleanObject(updatedOrder);
-            console.log('📋 Commande nettoyée à sauvegarder:', cleanedUpdatedOrder);
-
             await set(orderRef, cleanedUpdatedOrder);
 
-            console.log('✅ Items ajoutés à la commande:', updatedOrder);
+            let zoneName = 'Zone inconnue';
+            let tableNumber: number | undefined;
+
+            if (currentOrder.serviceType === 'DINING' && currentOrder.tableId) {
+                try {
+                    // Récupérer les infos de la table (à adapter selon votre structure)
+                    const tableRef = ref(rtDatabase, `restaurants/${restaurantSlug}/tables/${currentOrder.tableId}`);
+                    const tableSnapshot = await get(tableRef);
+                    if (tableSnapshot.exists()) {
+                        const tableData = tableSnapshot.val();
+                        tableNumber = tableData.numero;
+
+                        // Récupérer les infos de la zone
+                        const zoneRef = ref(rtDatabase, `restaurants/${restaurantSlug}/zones/${currentOrder.zoneId}`);
+                        const zoneSnapshot = await get(zoneRef);
+                        if (zoneSnapshot.exists()) {
+                            zoneName = zoneSnapshot.val().nom || 'Zone inconnue';
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur lors de la récupération des infos table/zone:', error);
+                }
+            }
+
+            // Appeler le service d'impression
+            await printService.printNewItems(
+                restaurantSlug,
+                currentOrder.number,
+                currentOrder.serviceType,
+                zoneName,
+                currentOrder.tableId,
+                tableNumber,
+                cleanedNewItems
+            );
+
             return updatedOrder;
         } catch (error) {
             console.error('❌ Erreur lors de l\'ajout d\'items:', error);
