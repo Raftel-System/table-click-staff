@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CategoryNav } from '../components/CategoryNav';
 import { ArticleGrid } from '../components/ArticleGrid';
 import { AdjustmentPanel } from '../components/AdjustmentPanel';
@@ -11,6 +11,12 @@ import { useMenuItems } from '../hooks/useMenuItems';
 import { useOrder } from '../hooks/useOrder';
 import { useZones } from '@/hooks/useZones';
 import type { MenuItem, MenuConfig } from '@/types';
+import { MenuStepOptionsPanel } from '@/components/ui/MenuStepOptionsPanel';
+
+// Types pour la gestion des menus composés
+interface MenuStepSelections {
+  [stepId: string]: string[]; // Array d'IDs des options sélectionnées
+}
 
 // Composant Modal de confirmation
 const TerminateOrderModal = ({
@@ -69,6 +75,71 @@ const TerminateOrderModal = ({
   );
 };
 
+// Composant de navigation entre steps
+const StepNavigation = ({ 
+  currentStepIndex, 
+  totalSteps, 
+  onPreviousStep, 
+  onNextStep, 
+  onValidateMenu,
+  canGoNext,
+  canValidate 
+}: {
+  currentStepIndex: number;
+  totalSteps: number;
+  onPreviousStep: () => void;
+  onNextStep: () => void;
+  onValidateMenu: () => void;
+  canGoNext: boolean;
+  canValidate: boolean;
+}) => {
+  const isLastStep = currentStepIndex === totalSteps - 1;
+  
+  return (
+    <div className="w-40 theme-header-bg p-3 flex flex-col gap-2">
+      <div className="text-xs theme-secondary-text text-center mb-2">
+        Étape {currentStepIndex + 1} sur {totalSteps}
+      </div>
+      
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={onPreviousStep}
+          disabled={currentStepIndex === 0}
+          className={`theme-button-secondary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
+            currentStepIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          <ChevronLeft className="w-3 h-3" />
+          Précédent
+        </button>
+
+        {!isLastStep ? (
+          <button
+            onClick={onNextStep}
+            disabled={!canGoNext}
+            className={`theme-button-primary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
+              !canGoNext ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Suivant
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        ) : (
+          <button
+            onClick={onValidateMenu}
+            disabled={!canValidate}
+            className={`bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              !canValidate ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Valider le menu
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Commande = () => {
   const { restaurantSlug, tableId } = useParams<{ restaurantSlug: string; tableId: string }>();
   const navigate = useNavigate();
@@ -83,6 +154,30 @@ const Commande = () => {
   const [tableInfo, setTableInfo] = useState<{table: any, zone: any} | null>(null);
   const [tableSearchLoading, setTableSearchLoading] = useState(true);
 
+  // États pour la gestion normale
+  const [activeCategory, setActiveCategory] = useState('');
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  
+  // États pour la gestion des menus composés
+  const [isMenuConfig, setIsMenuConfig] = useState(false);
+  const [activeMenuStep, setActiveMenuStep] = useState<string>('');
+  const [currentMenu, setCurrentMenu] = useState<MenuItem | null>(null);
+  const [menuStepSelections, setMenuStepSelections] = useState<MenuStepSelections>({});
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  
+  const [editingItem, setEditingItem] = useState<{
+    id: string;
+    nom: string;
+    prix: number;
+    quantite: number;
+    note?: string;
+    isSent?: boolean;
+  } | null>(null);
+
+  // États pour le modal de confirmation
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
+
   // Effet pour trouver la table et sa zone
   useEffect(() => {
     const findTableAndZone = async () => {
@@ -92,31 +187,21 @@ const Commande = () => {
       }
 
       try {
-        // Importer les fonctions Firebase nécessaires
         const { collection, query, where, getDocs } = await import('firebase/firestore');
         const { db } = await import('@/lib/firebase');
 
-        // Chercher la table spécifique dans toutes les tables
         const tablesRef = collection(db, `restaurants/${restaurantSlug}/tables`);
-        const tableQuery = query(
-            tablesRef,
-            where('active', '==', true)
-        );
-
+        const tableQuery = query(tablesRef, where('active', '==', true));
         const tablesSnapshot = await getDocs(tableQuery);
         let foundTable = null;
 
         tablesSnapshot.forEach((doc) => {
           if (doc.id === tableId) {
-            foundTable = {
-              id: doc.id,
-              ...doc.data()
-            };
+            foundTable = { id: doc.id, ...doc.data() };
           }
         });
 
         if (foundTable) {
-          // Trouver la zone correspondante
           const correspondingZone = zones.find(z => z.id === foundTable.zoneId);
           setTableInfo({ table: foundTable, zone: correspondingZone });
         }
@@ -134,16 +219,13 @@ const Commande = () => {
   const isEmporter = tableId?.startsWith('CMD');
   const serviceType = isEmporter ? 'TAKEAWAY' : 'DINING';
 
-  let zoneId = 'terrasse'; // valeur par défaut
+  let zoneId = 'terrasse';
   if (isEmporter) {
-    // Pour emporter, trouver la zone TAKEAWAY
     const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
     zoneId = takeawayZone?.id || 'emporter';
   } else if (tableInfo?.zone) {
-    // Utiliser la vraie zone de la table
     zoneId = tableInfo.zone.id;
   } else if (zones.length > 0) {
-    // Utiliser la première zone DINING par défaut
     const firstDiningZone = zones.find(z => z.serviceType === 'DINING');
     zoneId = firstDiningZone?.id || 'terrasse';
   }
@@ -160,25 +242,6 @@ const Commande = () => {
     error,
     clearError
   } = useOrder(restaurantSlug || '', tableId, serviceType, zoneId);
-
-  const [activeCategory, setActiveCategory] = useState('');
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [isMenuConfig, setIsMenuConfig] = useState(false);
-  const [activeMenuStep, setActiveMenuStep] = useState<string>('');
-  const [currentMenu, setCurrentMenu] = useState<MenuItem | null>(null);
-  const [menuConfig, setMenuConfig] = useState<MenuConfig>({});
-  const [editingItem, setEditingItem] = useState<{
-    id: string;
-    nom: string;
-    prix: number;
-    quantite: number;
-    note?: string;
-    isSent?: boolean;
-  } | null>(null);
-
-  // États pour le modal de confirmation
-  const [showTerminateModal, setShowTerminateModal] = useState(false);
-  const [isTerminating, setIsTerminating] = useState(false);
 
   // Set first category as active when categories load
   useEffect(() => {
@@ -197,94 +260,51 @@ const Commande = () => {
     }
   }, [error, clearError]);
 
-  // Filtrer les articles par catégorie
+  // Filtrer les articles par catégorie (seulement si pas en mode menu config)
   const filteredItems = useMemo(() => {
-    if (isMenuConfig && activeMenuStep) {
-      return [];
+    if (isMenuConfig) {
+      return []; // Pas d'articles normaux en mode config
     }
     return menuItems.filter(item => item.categorieId === activeCategory);
-  }, [menuItems, activeCategory, isMenuConfig, activeMenuStep]);
+  }, [menuItems, activeCategory, isMenuConfig]);
 
-  // Fonction pour envoyer des articles (différente de terminer)
-  const handleSendItems = async () => {
-    const pendingItems = items.filter(item => !item.envoye);
-
-    if (pendingItems.length === 0) {
-      console.log("Aucun article à envoyer !");
-      return;
+  // Calculer le step actuel et les sélections
+  const currentStep = useMemo(() => {
+    if (!currentMenu?.composedMenuConfig?.steps || !activeMenuStep) {
+      return null;
     }
+    return currentMenu.composedMenuConfig.steps.find(step => step.id === activeMenuStep) || null;
+  }, [currentMenu, activeMenuStep]);
 
-    const orderItems = pendingItems.map(item => ({
-      id: item.id,
-      nom: item.nom,
-      prix: item.prix,
-      quantite: item.quantite,
-      note: item.note,
-      menuConfig: item.menuConfig
-    }));
+  const currentSelections = menuStepSelections[activeMenuStep] || [];
 
-    try {
-      console.log('🚀 Envoi des items vers la commande:', orderItems);
+  // Calculer le prix total du menu en cours de configuration
+  const totalMenuPrice = useMemo(() => {
+    if (!currentMenu?.composedMenuConfig) return 0;
+    
+    const basePrice = currentMenu.composedMenuConfig.basePrice;
+    const adjustments = Object.entries(menuStepSelections).reduce((total, [stepId, selectedIds]) => {
+      const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
+      if (!step) return total;
+      
+      return total + selectedIds.reduce((stepTotal, optionId) => {
+        const option = step.options.find(o => o.id === optionId);
+        return stepTotal + (option?.priceAdjustment || 0);
+      }, 0);
+    }, 0);
+    
+    return basePrice + adjustments;
+  }, [currentMenu, menuStepSelections]);
 
-      const success = await addItemsToCurrentOrder(orderItems);
+  const currentAdjustment = useMemo(() => {
+    if (!currentStep) return 0;
+    return currentSelections.reduce((total, optionId) => {
+      const option = currentStep.options.find(o => o.id === optionId);
+      return total + (option?.priceAdjustment || 0);
+    }, 0);
+  }, [currentStep, currentSelections]);
 
-      if (success) {
-        console.log('✅ Items ajoutés avec succès à la commande');
-        validateOrder();
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'envoi de la commande:', error);
-    }
-  };
-
-  // Fonction pour terminer définitivement la commande
-  const handleTerminateOrder = async () => {
-    if (!currentOrder) {
-      console.error('❌ Pas de commande active à terminer');
-      return;
-    }
-
-    setIsTerminating(true);
-
-    try {
-      // 1. D'abord envoyer les articles en attente s'il y en a
-      const pendingItems = items.filter(item => !item.envoye);
-      if (pendingItems.length > 0) {
-        console.log('📤 Envoi des articles en attente avant finalisation...');
-        await handleSendItems();
-
-        // Attendre un peu pour que les items soient bien ajoutés
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      // 2. Changer le statut à "served" (commande terminée)
-      console.log('🏁 Finalisation de la commande...');
-      await updateOrderStatus('served');
-
-      // 3. Sauvegarder dans Firestore (si nécessaire - déjà fait par le service)
-      console.log('💾 Commande sauvegardée dans Firestore');
-
-      // 4. Nettoyer la session
-      console.log('🧹 Nettoyage de la session...');
-      await clearCurrentSession();
-
-      // 5. Nettoyer le panier local
-      clearCart();
-
-      console.log('✅ Commande terminée avec succès !');
-
-      // 6. Rediriger vers la page d'accueil
-      navigate(`/${restaurantSlug}/zones`);
-
-    } catch (error) {
-      console.error('❌ Erreur lors de la finalisation:', error);
-      // Vous pourriez afficher un message d'erreur à l'utilisateur ici
-    } finally {
-      setIsTerminating(false);
-      setShowTerminateModal(false);
-    }
-  };
-
+  // Fonctions pour gérer la sélection d'articles normaux
   const handleItemSelect = (item: MenuItem) => {
     console.log('🎯 handleItemSelect - item:', item);
 
@@ -296,44 +316,173 @@ const Commande = () => {
 
       setIsMenuConfig(true);
       setCurrentMenu(item);
+      setMenuStepSelections({});
+      setCurrentStepIndex(0);
 
       const firstStepId = item.composedMenuConfig.steps[0]?.id || '';
-      console.log('🎯 handleItemSelect - firstStepId:', firstStepId);
-
       setActiveMenuStep(firstStepId);
-      setMenuConfig({});
-
-      setTimeout(() => {
-        console.log('🔄 Force re-render after menu config');
-      }, 100);
     }
   };
 
   const handleAddToCart = (item: MenuItem, quantity: number, note: string) => {
-    if (isMenuConfig && currentMenu && activeMenuStep) {
-      setSelectedItem(null);
-    } else {
-      addItem({
-        nom: item.nom,
-        prix: item.prix,
-        quantite: quantity,
-        note
-      });
-      setSelectedItem(null);
+    addItem({
+      nom: item.nom,
+      prix: item.prix,
+      quantite: quantity,
+      note
+    });
+    setSelectedItem(null);
+  };
+
+  // Fonctions pour gérer la navigation des menus composés
+  const handleMenuStepChange = (stepId: string) => {
+    const stepIndex = currentMenu?.composedMenuConfig?.steps.findIndex(s => s.id === stepId) || 0;
+    setCurrentStepIndex(stepIndex);
+    setActiveMenuStep(stepId);
+    setSelectedItem(null);
+  };
+
+  const handleToggleOption = (optionId: string) => {
+    setMenuStepSelections(prev => {
+      const currentSelections = prev[activeMenuStep] || [];
+      const isSelected = currentSelections.includes(optionId);
+      
+      if (isSelected) {
+        // Retirer la sélection
+        return {
+          ...prev,
+          [activeMenuStep]: currentSelections.filter(id => id !== optionId)
+        };
+      } else {
+        // Ajouter la sélection
+        const newSelections = [...currentSelections, optionId];
+        return {
+          ...prev,
+          [activeMenuStep]: newSelections
+        };
+      }
+    });
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStepIndex > 0) {
+      const newIndex = currentStepIndex - 1;
+      const newStepId = currentMenu?.composedMenuConfig?.steps[newIndex]?.id;
+      if (newStepId) {
+        setCurrentStepIndex(newIndex);
+        setActiveMenuStep(newStepId);
+      }
     }
   };
 
-  const handleMenuStepChange = (step: string) => {
-    setActiveMenuStep(step);
-    setSelectedItem(null);
+  const handleNextStep = () => {
+    if (currentMenu?.composedMenuConfig?.steps && currentStepIndex < currentMenu.composedMenuConfig.steps.length - 1) {
+      const newIndex = currentStepIndex + 1;
+      const newStepId = currentMenu.composedMenuConfig.steps[newIndex]?.id;
+      if (newStepId) {
+        setCurrentStepIndex(newIndex);
+        setActiveMenuStep(newStepId);
+      }
+    }
+  };
+
+  const handleValidateMenu = () => {
+    if (!currentMenu) return;
+    
+    // Créer le nom du menu avec les sélections
+    const menuDescription = Object.entries(menuStepSelections)
+      .map(([stepId, selectedIds]) => {
+        const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
+        const selectedOptions = selectedIds.map(optionId => 
+          step?.options.find(o => o.id === optionId)?.nom
+        ).filter(Boolean);
+        return selectedOptions.join(', ');
+      })
+      .filter(Boolean)
+      .join(' • ');
+
+    const finalName = `${currentMenu.nom} (${menuDescription})`;
+
+    // Ajouter au panier
+    addItem({
+      nom: finalName,
+      prix: totalMenuPrice,
+      quantite: 1,
+      note: '',
+      menuConfig: menuStepSelections
+    });
+
+    // Réinitialiser le mode menu
+    handleReturnToCategories();
   };
 
   const handleReturnToCategories = () => {
     setIsMenuConfig(false);
     setCurrentMenu(null);
     setActiveMenuStep('');
-    setMenuConfig({});
+    setMenuStepSelections({});
+    setCurrentStepIndex(0);
     setSelectedItem(null);
+  };
+
+  // Validation pour les steps
+  const canGoNext = currentStep ? 
+    menuStepSelections[activeMenuStep]?.length >= currentStep.minSelections : false;
+
+  const canValidateMenu = useMemo(() => {
+    if (!currentMenu?.composedMenuConfig?.steps) return false;
+    
+    return currentMenu.composedMenuConfig.steps.every(step => {
+      const selections = menuStepSelections[step.id] || [];
+      return selections.length >= step.minSelections && selections.length <= step.maxSelections;
+    });
+  }, [currentMenu, menuStepSelections]);
+
+  // Autres fonctions (inchangées)
+  const handleSendItems = async () => {
+    const pendingItems = items.filter(item => !item.envoye);
+    if (pendingItems.length === 0) return;
+
+    const orderItems = pendingItems.map(item => ({
+      id: item.id,
+      nom: item.nom,
+      prix: item.prix,
+      quantite: item.quantite,
+      note: item.note,
+      menuConfig: item.menuConfig
+    }));
+
+    try {
+      const success = await addItemsToCurrentOrder(orderItems);
+      if (success) {
+        validateOrder();
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi de la commande:', error);
+    }
+  };
+
+  const handleTerminateOrder = async () => {
+    if (!currentOrder) return;
+    setIsTerminating(true);
+
+    try {
+      const pendingItems = items.filter(item => !item.envoye);
+      if (pendingItems.length > 0) {
+        await handleSendItems();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      await updateOrderStatus('served');
+      await clearCurrentSession();
+      clearCart();
+      navigate(`/${restaurantSlug}/zones`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la finalisation:', error);
+    } finally {
+      setIsTerminating(false);
+      setShowTerminateModal(false);
+    }
   };
 
   const handleEditItem = (item: {
@@ -344,15 +493,10 @@ const Commande = () => {
     note?: string
   }) => {
     setSelectedItem(null);
-
     const isSent = currentOrder?.items?.some((orderItem, index) =>
         `${currentOrder.id}-${index}` === item.id
     ) || false;
-
-    setEditingItem({
-      ...item,
-      isSent
-    });
+    setEditingItem({ ...item, isSent });
   };
 
   const handleUpdateItem = (id: string, quantity: number, note: string) => {
@@ -373,13 +517,10 @@ const Commande = () => {
     setEditingItem(null);
   };
 
-  const getRetourPath = () => {
-    return `/${restaurantSlug}/zones`;
-  };
+  const getRetourPath = () => `/${restaurantSlug}/zones`;
 
   const getHeaderInfo = () => {
     if (tableId?.startsWith('CMD')) {
-      // Pour les commandes à emporter
       const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
       return {
         zone: takeawayZone?.nom || 'Emporter',
@@ -389,7 +530,6 @@ const Commande = () => {
       };
     }
 
-    // Pour les tables - utiliser les données trouvées
     const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
     const tableNum = tableInfo?.table?.numero || 'inconnue';
     const tableInfoStr = `Table ${tableNum}`;
@@ -441,7 +581,6 @@ const Commande = () => {
             </div>
           </div>
 
-          {/* Bouton Terminer la commande */}
           <button
               onClick={() => setShowTerminateModal(true)}
               disabled={!hasActiveOrder && pendingItemsCount === 0}
@@ -476,22 +615,47 @@ const Commande = () => {
               onReturnToCategories={handleReturnToCategories}
           />
 
-          {/* Catalogue */}
-          <ArticleGrid
+          {/* Panel central - Articles normaux OU options de menu */}
+          {isMenuConfig ? (
+            <MenuStepOptionsPanel
+              currentStep={currentStep}
+              selections={currentSelections}
+              onToggleOption={handleToggleOption}
+              basePrice={currentMenu?.composedMenuConfig?.basePrice || 0}
+              totalAdjustment={currentAdjustment}
+            />
+          ) : (
+            <ArticleGrid
               items={filteredItems}
               onItemSelect={handleItemSelect}
-          />
+            />
+          )}
 
-          {/* Ajustement */}
-          <AdjustmentPanel
-              selectedItem={selectedItem}
-              onAddToCart={handleAddToCart}
-              editingItem={editingItem}
-              onUpdateItem={handleUpdateItem}
-              onCancelItem={handleCancelEditingItem}
-          />
+          {/* Navigation des steps (seulement en mode menu) */}
+          {isMenuConfig && currentMenu?.composedMenuConfig?.steps && (
+            <StepNavigation
+              currentStepIndex={currentStepIndex}
+              totalSteps={currentMenu.composedMenuConfig.steps.length}
+              onPreviousStep={handlePreviousStep}
+              onNextStep={handleNextStep}
+              onValidateMenu={handleValidateMenu}
+              canGoNext={canGoNext}
+              canValidate={canValidateMenu}
+            />
+          )}
 
-          {/* Panier avec fonction d'envoi séparée */}
+          {/* Ajustement (seulement si pas en mode menu) */}
+          {!isMenuConfig && (
+            <AdjustmentPanel
+                selectedItem={selectedItem}
+                onAddToCart={handleAddToCart}
+                editingItem={editingItem}
+                onUpdateItem={handleUpdateItem}
+                onCancelItem={handleCancelEditingItem}
+            />
+          )}
+
+          {/* Panier */}
           <CartList
               onEditItem={handleEditItem}
               onValidateOrder={handleSendItems}
