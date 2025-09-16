@@ -36,7 +36,7 @@ export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
             console.log('✅ Nouvelle commande créée:', newOrder.number);
 
             // Rediriger vers la commande créée avec son vrai numéro
-            navigate(`/${restaurantSlug}/commande/emporter/${newOrder.number}`);
+            navigate(`/${restaurantSlug}/zones/${zoneId}/commande/${newOrder.number}`);
 
         } catch (error) {
             console.error('❌ Erreur lors de la création de commande:', error);

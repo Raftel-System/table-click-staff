@@ -24,7 +24,7 @@ const App = () => (
                     <Route path="/:restaurantSlug/zones" element={<Zones />} />
                     <Route path="/:restaurantSlug/zones/:zoneId" element={<ZoneDetail />} />
                     <Route path="/:restaurantSlug/commande/:tableId" element={<Commande />} />
-                    <Route path="/:restaurantSlug/commande/emporter/:orderId" element={<Commande />} />
+                    <Route path="/:restaurantSlug/zones/:zoneId/commande/:tableId" element={<Commande />} />
 
                     {/* Catch-all route */}
                     <Route path="*" element={<NotFound />} />

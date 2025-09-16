@@ -18,7 +18,7 @@ export const TableCard = ({ table, restaurantSlug }: TableCardProps) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/${restaurantSlug}/commande/${table.id}`);
+    navigate(`/${restaurantSlug}/zones/${table.zoneId}/commande/${table.id}`);
   };
 
   return (

@@ -10,7 +10,7 @@ import { useMenuCategories } from '../hooks/useMenuCategories';
 import { useMenuItems } from '../hooks/useMenuItems';
 import { useOrder } from '../hooks/useOrder';
 import { useZones } from '@/hooks/useZones';
-import type { MenuItem, MenuConfig } from '@/types';
+import type { MenuItem } from '@/types';
 import { MenuStepOptionsPanel } from '@/components/ui/MenuStepOptionsPanel';
 
 // Types pour la gestion des menus composés
@@ -141,8 +141,11 @@ const StepNavigation = ({
 };
 
 const Commande = () => {
-  const { restaurantSlug, tableId } = useParams<{ restaurantSlug: string; tableId: string }>();
-  const navigate = useNavigate();
+  const { restaurantSlug, zoneId, tableId } = useParams<{
+    restaurantSlug: string;
+    zoneId: string;
+    tableId: string;
+  }>();  const navigate = useNavigate();
   const { addItem, updateItem, removeItem, items, validateOrder, clearCart } = useCartStore();
 
   // Firebase hooks
@@ -177,6 +180,9 @@ const Commande = () => {
   // États pour le modal de confirmation
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+
+  const currentZone = zones.find(zone => zone.id === zoneId);
+  const serviceType = currentZone?.serviceType || 'DINING';
 
   // Effet pour trouver la table et sa zone
   useEffect(() => {
@@ -215,20 +221,6 @@ const Commande = () => {
     findTableAndZone();
   }, [restaurantSlug, tableId, zones]);
 
-  // Déterminer le serviceType et zoneId
-  const isEmporter = tableId?.startsWith('CMD');
-  const serviceType = isEmporter ? 'TAKEAWAY' : 'DINING';
-
-  let zoneId = 'terrasse';
-  if (isEmporter) {
-    const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
-    zoneId = takeawayZone?.id || 'emporter';
-  } else if (tableInfo?.zone) {
-    zoneId = tableInfo.zone.id;
-  } else if (zones.length > 0) {
-    const firstDiningZone = zones.find(z => z.serviceType === 'DINING');
-    zoneId = firstDiningZone?.id || 'terrasse';
-  }
 
   // Hook pour la gestion des commandes avec temps réel
   const {
@@ -440,6 +432,13 @@ const Commande = () => {
 
   // Autres fonctions (inchangées)
   const handleSendItems = async () => {
+    // ✅ Vérifier que la commande est initialisée
+    if (!currentOrder) {
+      console.error('❌ Commande non initialisée, tentative de réinitialisation...');
+      // Optionnel : déclencher une réinitialisation
+      return;
+    }
+
     const pendingItems = items.filter(item => !item.envoye);
     if (pendingItems.length === 0) return;
 
@@ -520,16 +519,24 @@ const Commande = () => {
   const getRetourPath = () => `/${restaurantSlug}/zones`;
 
   const getHeaderInfo = () => {
-    if (tableId?.startsWith('CMD')) {
-      const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
+
+    const currentZone = zones.find(zone => zone.id === zoneId);
+    console.log("currentZone : ", currentZone);
+    if (!currentZone) {
+      return ;
+    }
+
+    if (currentZone.serviceType === 'TAKEAWAY') {
       return {
-        zone: takeawayZone?.nom || 'Emporter',
-        table: '',
+        zone: currentZone?.nom,
+        table: null,
         numero: currentOrderNumber,
-        fullInfo: takeawayZone?.nom || 'Emporter',
+        fullInfo: `${currentZone?.nom}`,
       };
     }
 
+
+    // Pour les tables normales (inchangé)
     const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
     const tableNum = tableInfo?.table?.numero || 'inconnue';
     const tableInfoStr = `Table ${tableNum}`;
@@ -577,7 +584,7 @@ const Commande = () => {
                   </>
               )}
               <span>•</span>
-              <span>Commande {headerInfo.numero}</span>
+              <span>{headerInfo.numero}</span> {/* Supprimé "Commande" */}
             </div>
           </div>
 
