@@ -87,8 +87,6 @@ export const useOrder = (
                 currentOrder.id,
                 items
             );
-
-            console.log('✅ Items ajoutés avec succès');
             return true;
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';

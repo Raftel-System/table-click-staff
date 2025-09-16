@@ -33,8 +33,6 @@ export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
                 zoneId
             );
 
-            console.log('✅ Nouvelle commande créée:', newOrder.number);
-
             // Rediriger vers la commande créée avec son vrai numéro
             navigate(`/${restaurantSlug}/zones/${zoneId}/commande/${newOrder.number}`);
 
