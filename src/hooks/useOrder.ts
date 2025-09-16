@@ -11,31 +11,36 @@ export const useOrder = (
     const [isAddingItems, setIsAddingItems] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoadingOrder, setIsLoadingOrder] = useState(false);
-    const [isInitialized, setIsInitialized] = useState(false); // 🆕 Flag pour éviter la double initialisation
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // 🆕 Créer ou récupérer la commande de session au chargement
     useEffect(() => {
         if (!restaurantSlug || !tableId || !serviceType || !zoneId) return;
-        if (isInitialized) return; // 🆕 Éviter la double initialisation
+        if (isInitialized) return;
 
         const initializeOrder = async () => {
             setIsLoadingOrder(true);
             setError(null);
 
             try {
-
+                console.log('🚀 Initialisation commande:', {
+                    restaurantSlug,
+                    tableId,
+                    serviceType,
+                    zoneId
+                });
 
                 const sessionOrder = await orderService.getOrCreateSessionOrder(
                     restaurantSlug,
-                    tableId?.startsWith('CMD') ? null : tableId,
+                    tableId, // Utiliser tableId directement
                     serviceType,
                     zoneId
                 );
 
                 setCurrentOrder(sessionOrder);
-                setIsInitialized(true); // 🆕 Marquer comme initialisé
+                setIsInitialized(true);
 
-                // 🆕 Écouter les changements de CETTE commande en temps réel
+                // Écouter les changements de CETTE commande en temps réel
                 const unsubscribe = orderService.onOrderChange(
                     restaurantSlug,
                     sessionOrder.id,
@@ -46,7 +51,6 @@ export const useOrder = (
                     }
                 );
 
-                // Cleanup à la fin
                 return () => {
                     console.log('🧹 Nettoyage listener commande');
                     unsubscribe();
@@ -62,11 +66,10 @@ export const useOrder = (
 
         initializeOrder();
 
-        // 🆕 Cleanup pour réinitialiser le flag si les paramètres changent
         return () => {
             setIsInitialized(false);
         };
-    }, [restaurantSlug, tableId, serviceType, zoneId]); // 🆕 Ajout d'isInitialized dans les dépendances n'est pas nécessaire
+    }, [restaurantSlug, tableId, serviceType, zoneId]);
 
     // 🆕 Ajouter des items à la commande existante
     const addItemsToCurrentOrder = async (items: OrderItem[]): Promise<boolean> => {
@@ -85,7 +88,6 @@ export const useOrder = (
                 items
             );
 
-            // L'ordre sera mis à jour automatiquement via le listener temps réel
             console.log('✅ Items ajoutés avec succès');
             return true;
         } catch (err) {
@@ -121,10 +123,8 @@ export const useOrder = (
         if (!restaurantSlug || !tableId) return;
 
         try {
-            await orderService.clearSession(
-                restaurantSlug,
-                tableId?.startsWith('CMD') ? null : tableId
-            );
+            // 🔧 CORRECTION: Passer tableId tel quel pour le nettoyage
+            await orderService.clearSession(restaurantSlug, tableId);
             setCurrentOrder(null);
         } catch (err) {
             console.error('❌ Erreur lors du nettoyage de session:', err);
@@ -132,7 +132,6 @@ export const useOrder = (
     };
 
     return {
-        // 🆕 Nouvelles propriétés pour commande évolutive
         currentOrder,
         currentOrderNumber: currentOrder?.number || 'CMD_1',
 
@@ -149,7 +148,7 @@ export const useOrder = (
 
         // 🔄 Compatibilité (deprecated - à supprimer plus tard)
         isCreatingOrder: isAddingItems,
-        createOrder: async () => null, // Dummy function
+        createOrder: async () => null,
         sentOrders: currentOrder ? [currentOrder] : [],
         isLoadingOrders: isLoadingOrder
     };

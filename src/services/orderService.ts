@@ -85,13 +85,24 @@ class OrderService {
     // 🆕 Créer ou récupérer la commande de session pour une table
     async getOrCreateSessionOrder(
         restaurantSlug: string,
-        tableId: string | null,
+        tableId: string,
         serviceType: 'DINING' | 'TAKEAWAY',
         zoneId: string
     ): Promise<Order> {
         try {
-            // Créer une clé unique pour la session (table ou CMD)
-            const sessionKey = tableId || 'takeaway_session';
+            // 🔧 CORRECTION: Créer une clé unique pour chaque session
+            let sessionKey: string;
+
+            if (serviceType === 'TAKEAWAY') {
+                // Pour takeaway, utiliser le tableId (qui commence par CMD) comme clé unique
+                sessionKey = `takeaway_${tableId}`;
+            } else {
+                // Pour dining, utiliser table_<id>
+                sessionKey = `table_${tableId}`;
+            }
+
+            console.log('🔧 Session key créée:', sessionKey);
+
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}/currentOrder`);
 
             // Vérifier si une commande existe déjà pour cette session
@@ -105,12 +116,13 @@ class OrderService {
                 if (orderSnapshot.exists()) {
                     const existingOrder = orderSnapshot.val() as Order;
 
-                    // 🆕 Sécuriser la structure de la commande existante
+                    // Sécuriser la structure de la commande existante
                     const secureOrder: Order = {
                         ...existingOrder,
                         items: Array.isArray(existingOrder.items) ? existingOrder.items : [],
                         total: typeof existingOrder.total === 'number' ? existingOrder.total : 0
                     };
+                    console.log('✅ Commande de session existante récupérée:', secureOrder.number);
                     return secureOrder;
                 }
             }
@@ -124,10 +136,10 @@ class OrderService {
                 number: orderNumber,
                 serviceType,
                 zoneId,
-                tableId,
+                tableId: serviceType === 'DINING' ? tableId : null, // 🔧 Pour takeaway, tableId null
                 status: 'pending',
                 createdAt: new Date().toISOString(),
-                items: [], // 🆕 Toujours initialiser comme tableau vide
+                items: [],
                 total: 0
             };
 
@@ -138,7 +150,7 @@ class OrderService {
             // Associer cette commande à la session
             await set(sessionRef, orderId);
 
-            console.log('✅ Nouvelle commande de session créée:', newOrder);
+            console.log('✅ Nouvelle commande de session créée:', newOrder.number);
             return newOrder;
         } catch (error) {
             console.error('❌ Erreur lors de la création/récupération de commande:', error);
@@ -294,10 +306,22 @@ class OrderService {
     // 🆕 Nettoyer la session (optionnel - pour fin de service)
     async clearSession(
         restaurantSlug: string,
-        tableId: string | null
+        tableId: string // 🔧 Retiré | null
     ): Promise<void> {
         try {
-            const sessionKey = tableId || 'takeaway_session';
+            // 🔧 CORRECTION: Utiliser la même logique de clé que getOrCreateSessionOrder
+            let sessionKey: string;
+
+            if (tableId.startsWith('CMD')) {
+                // Pour takeaway
+                sessionKey = `takeaway_${tableId}`;
+            } else {
+                // Pour dining
+                sessionKey = `table_${tableId}`;
+            }
+
+            console.log('🧹 Nettoyage session:', sessionKey);
+
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}`);
             await set(sessionRef, null);
 
