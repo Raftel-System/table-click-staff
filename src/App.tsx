@@ -7,6 +7,7 @@ import Zones from "./pages/Zones";
 import ZoneDetail from "./pages/ZoneDetail";
 import Commande from "./pages/Commande";
 import NotFound from "./pages/NotFound";
+import DevPage from "./pages/DevPage";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,9 @@ const App = () => (
                 <Routes>
                     {/* Redirection racine vers un restaurant par défaut */}
                     <Route path="/" element={<Navigate to="/talya-bercy/zones" replace />} />
+
+                    {/* Dev route - accessible via /dev */}
+                    <Route path="/dev" element={<DevPage />} />
 
                     {/* Routes avec restaurant slug */}
                     <Route path="/:restaurantSlug/zones" element={<Zones />} />
