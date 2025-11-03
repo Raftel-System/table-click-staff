@@ -25,7 +25,7 @@ export interface Order {
 }
 
 class OrderService {
-    // 🆕 Fonction pour nettoyer les valeurs undefined
+    // Fonction pour nettoyer les valeurs undefined
     private cleanObject(obj: any): any {
         if (Array.isArray(obj)) {
             return obj.map(item => this.cleanObject(item));
@@ -82,32 +82,66 @@ class OrderService {
         }
     }
 
-    // 🆕 Créer ou récupérer la commande de session pour une table
-    async getOrCreateSessionOrder(
+    // ========================================
+    // MÉTHODES POUR TAKEAWAY (sans sessions)
+    // ========================================
+
+    /**
+     * Créer une commande à emporter
+     * Chaque commande takeaway est unique et indépendante (PAS de session)
+     */
+    async createTakeawayOrder(
         restaurantSlug: string,
-        tableId: string,
-        serviceType: 'DINING' | 'TAKEAWAY',
         zoneId: string
     ): Promise<Order> {
         try {
-            // 🔧 CORRECTION: Créer une clé unique pour chaque session
-            let sessionKey: string;
+            const orderId = this.generateOrderId();
+            const orderNumber = await this.generateOrderNumber(restaurantSlug);
 
-            if (serviceType === 'TAKEAWAY') {
-                // Pour takeaway, utiliser le tableId (qui commence par CMD) comme clé unique
-                sessionKey = `takeaway_${tableId}`;
-            } else {
-                // Pour dining, utiliser table_<id>
-                sessionKey = `table_${tableId}`;
-            }
+            const newOrder: Order = {
+                id: orderId,
+                number: orderNumber,
+                serviceType: 'TAKEAWAY',
+                zoneId,
+                tableId: null,
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                items: [],
+                total: 0
+            };
 
-            console.log('🔧 Session key créée:', sessionKey);
+            const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
+            await set(orderRef, this.cleanObject(newOrder));
+
+            console.log('✅ Commande à emporter créée:', newOrder.number);
+            return newOrder;
+        } catch (error) {
+            console.error('❌ Erreur création commande takeaway:', error);
+            throw new Error('Impossible de créer la commande à emporter');
+        }
+    }
+
+    // ========================================
+    // MÉTHODES POUR DINING (avec sessions)
+    // ========================================
+
+    /**
+     * Créer ou récupérer la commande de session pour une TABLE (DINING uniquement)
+     * Une table = une session = une commande en cours
+     */
+    async getOrCreateDiningOrder(
+        restaurantSlug: string,
+        tableId: string,
+        zoneId: string
+    ): Promise<Order> {
+        try {
+            const sessionKey = `table_${tableId}`;
+            console.log('🔧 Session DINING key:', sessionKey);
 
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}/currentOrder`);
-
-            // Vérifier si une commande existe déjà pour cette session
             const sessionSnapshot = await get(sessionRef);
 
+            // Vérifier si une commande existe déjà pour cette table
             if (sessionSnapshot.exists()) {
                 const existingOrderId = sessionSnapshot.val();
                 const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${existingOrderId}`);
@@ -116,60 +150,62 @@ class OrderService {
                 if (orderSnapshot.exists()) {
                     const existingOrder = orderSnapshot.val() as Order;
 
-                    // Sécuriser la structure de la commande existante
                     const secureOrder: Order = {
                         ...existingOrder,
                         items: Array.isArray(existingOrder.items) ? existingOrder.items : [],
                         total: typeof existingOrder.total === 'number' ? existingOrder.total : 0
                     };
-                    console.log('✅ Commande de session existante récupérée:', secureOrder.number);
+                    console.log('✅ Commande DINING existante récupérée:', secureOrder.number);
                     return secureOrder;
                 }
             }
 
-            // Créer une nouvelle commande vide
+            // Créer une nouvelle commande pour cette table
             const orderId = this.generateOrderId();
             const orderNumber = await this.generateOrderNumber(restaurantSlug);
 
             const newOrder: Order = {
                 id: orderId,
                 number: orderNumber,
-                serviceType,
+                serviceType: 'DINING',
                 zoneId,
-                tableId: serviceType === 'DINING' ? tableId : null, // 🔧 Pour takeaway, tableId null
+                tableId,
                 status: 'pending',
                 createdAt: new Date().toISOString(),
                 items: [],
                 total: 0
             };
 
-            // Sauvegarder la commande
             const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
             await set(orderRef, this.cleanObject(newOrder));
 
-            // Associer cette commande à la session
+            // Associer cette commande à la session de la table
             await set(sessionRef, orderId);
 
-            console.log('✅ Nouvelle commande de session créée:', newOrder.number);
+            console.log('✅ Nouvelle commande DINING créée:', newOrder.number);
             return newOrder;
         } catch (error) {
-            console.error('❌ Erreur lors de la création/récupération de commande:', error);
-            throw new Error('Impossible de créer la commande de session');
+            console.error('❌ Erreur création/récupération commande DINING:', error);
+            throw new Error('Impossible de créer la commande de table');
         }
     }
 
-    // 🆕 Ajouter des items à la commande existante
+    // ========================================
+    // MÉTHODES COMMUNES
+    // ========================================
+
+    /**
+     * Ajouter des items à une commande existante (DINING ou TAKEAWAY)
+     */
     async addItemsToOrder(
         restaurantSlug: string,
         orderId: string,
         newItems: OrderItem[]
     ): Promise<Order> {
         try {
-            // Code existant pour ajouter des items
             const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
-
-            // Récupérer la commande actuelle
             const orderSnapshot = await get(orderRef);
+
             if (!orderSnapshot.exists()) {
                 throw new Error('Commande non trouvée');
             }
@@ -196,12 +232,10 @@ class OrderService {
                 return cleanedItem;
             });
 
-            // 🆕 Sécuriser l'accès aux items existants
             const existingItems = Array.isArray(currentOrder.items) ? currentOrder.items : [];
             const updatedItems = [...existingItems, ...cleanedNewItems];
             const updatedTotal = updatedItems.reduce((sum, item) => sum + (item.prix * item.quantite), 0);
 
-            // Mettre à jour la commande
             const updatedOrder: Order = {
                 ...currentOrder,
                 items: updatedItems,
@@ -210,22 +244,20 @@ class OrderService {
                 lastUpdated: new Date().toISOString()
             };
 
-            const cleanedUpdatedOrder = this.cleanObject(updatedOrder);
-            await set(orderRef, cleanedUpdatedOrder);
+            await set(orderRef, this.cleanObject(updatedOrder));
 
+            // Récupérer les infos pour l'impression
             let zoneName = 'Zone inconnue';
             let tableNumber: number | undefined;
 
             if (currentOrder.serviceType === 'DINING' && currentOrder.tableId) {
                 try {
-                    // Récupérer les infos de la table (à adapter selon votre structure)
                     const tableRef = ref(rtDatabase, `restaurants/${restaurantSlug}/tables/${currentOrder.tableId}`);
                     const tableSnapshot = await get(tableRef);
                     if (tableSnapshot.exists()) {
                         const tableData = tableSnapshot.val();
                         tableNumber = tableData.numero;
 
-                        // Récupérer les infos de la zone
                         const zoneRef = ref(rtDatabase, `restaurants/${restaurantSlug}/zones/${currentOrder.zoneId}`);
                         const zoneSnapshot = await get(zoneRef);
                         if (zoneSnapshot.exists()) {
@@ -233,11 +265,11 @@ class OrderService {
                         }
                     }
                 } catch (error) {
-                    console.error('❌ Erreur lors de la récupération des infos table/zone:', error);
+                    console.error('❌ Erreur récupération infos table/zone:', error);
                 }
             }
 
-            // Appeler le service d'impression
+            // Impression
             await printService.printNewItems(
                 restaurantSlug,
                 currentOrder.number,
@@ -250,12 +282,14 @@ class OrderService {
 
             return updatedOrder;
         } catch (error) {
-            console.error('❌ Erreur lors de l\'ajout d\'items:', error);
+            console.error('❌ Erreur ajout items:', error);
             throw new Error('Impossible d\'ajouter les items');
         }
     }
 
-    // Mettre à jour le statut d'une commande
+    /**
+     * Mettre à jour le statut d'une commande
+     */
     async updateOrderStatus(
         restaurantSlug: string,
         orderId: string,
@@ -270,12 +304,14 @@ class OrderService {
 
             console.log(`✅ Statut mis à jour: ${orderId} → ${status}`);
         } catch (error) {
-            console.error('❌ Erreur lors de la mise à jour du statut:', error);
+            console.error('❌ Erreur mise à jour statut:', error);
             throw new Error('Impossible de mettre à jour le statut');
         }
     }
 
-    // 🆕 Écouter UNE commande spécifique en temps réel
+    /**
+     * Écouter une commande en temps réel
+     */
     onOrderChange(
         restaurantSlug: string,
         orderId: string,
@@ -287,7 +323,6 @@ class OrderService {
             if (snapshot.exists()) {
                 const orderData = snapshot.val() as Order;
 
-                // 🆕 Sécuriser la structure de la commande reçue
                 const secureOrder: Order = {
                     ...orderData,
                     items: Array.isArray(orderData.items) ? orderData.items : [],
@@ -303,31 +338,24 @@ class OrderService {
         return () => off(orderRef, 'value', unsubscribe);
     }
 
-    // 🆕 Nettoyer la session (optionnel - pour fin de service)
-    async clearSession(
+    /**
+     * Nettoyer la session d'une table (DINING uniquement)
+     * Appelé quand une table est libérée
+     */
+    async clearDiningSession(
         restaurantSlug: string,
-        tableId: string // 🔧 Retiré | null
+        tableId: string
     ): Promise<void> {
         try {
-            // 🔧 CORRECTION: Utiliser la même logique de clé que getOrCreateSessionOrder
-            let sessionKey: string;
-
-            if (tableId.startsWith('CMD')) {
-                // Pour takeaway
-                sessionKey = `takeaway_${tableId}`;
-            } else {
-                // Pour dining
-                sessionKey = `table_${tableId}`;
-            }
-
-            console.log('🧹 Nettoyage session:', sessionKey);
+            const sessionKey = `table_${tableId}`;
+            console.log('🧹 Nettoyage session DINING:', sessionKey);
 
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}`);
             await set(sessionRef, null);
 
-            console.log('✅ Session nettoyée');
+            console.log('✅ Session table nettoyée');
         } catch (error) {
-            console.error('❌ Erreur lors du nettoyage de session:', error);
+            console.error('❌ Erreur nettoyage session:', error);
         }
     }
 }

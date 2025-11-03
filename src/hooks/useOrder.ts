@@ -13,7 +13,7 @@ export const useOrder = (
     const [isLoadingOrder, setIsLoadingOrder] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // 🆕 Créer ou récupérer la commande de session au chargement
+    // Créer ou récupérer la commande au chargement
     useEffect(() => {
         if (!restaurantSlug || !tableId || !serviceType || !zoneId) return;
         if (isInitialized) return;
@@ -30,17 +30,30 @@ export const useOrder = (
                     zoneId
                 });
 
-                const sessionOrder = await orderService.getOrCreateSessionOrder(
-                    restaurantSlug,
-                    tableId, // Utiliser tableId directement
-                    serviceType,
-                    zoneId
-                );
+                let sessionOrder: Order;
+
+                // 🔧 CORRECTION: Utiliser la bonne méthode selon le type de service
+                if (serviceType === 'DINING') {
+                    // Pour les tables : utiliser le système de session
+                    sessionOrder = await orderService.getOrCreateDiningOrder(
+                        restaurantSlug,
+                        tableId,
+                        zoneId
+                    );
+                } else {
+                    // Pour les takeaways : récupérer la commande par son ID
+                    // tableId contient en fait l'ID de la commande pour les takeaways
+                    const orderRef = await orderService.getOrderById(restaurantSlug, tableId);
+                    if (!orderRef) {
+                        throw new Error('Commande takeaway non trouvée');
+                    }
+                    sessionOrder = orderRef;
+                }
 
                 setCurrentOrder(sessionOrder);
                 setIsInitialized(true);
 
-                // Écouter les changements de CETTE commande en temps réel
+                // Écouter les changements en temps réel
                 const unsubscribe = orderService.onOrderChange(
                     restaurantSlug,
                     sessionOrder.id,
@@ -71,7 +84,7 @@ export const useOrder = (
         };
     }, [restaurantSlug, tableId, serviceType, zoneId]);
 
-    // 🆕 Ajouter des items à la commande existante
+    // Ajouter des items à la commande existante
     const addItemsToCurrentOrder = async (items: OrderItem[]): Promise<boolean> => {
         if (!restaurantSlug || !currentOrder) {
             setError('Commande non initialisée');
@@ -82,7 +95,7 @@ export const useOrder = (
         setError(null);
 
         try {
-            const updatedOrder = await orderService.addItemsToOrder(
+            await orderService.addItemsToOrder(
                 restaurantSlug,
                 currentOrder.id,
                 items
@@ -116,13 +129,12 @@ export const useOrder = (
         }
     };
 
-    // 🆕 Nettoyer la session (fin de service)
+    // Nettoyer la session (DINING uniquement)
     const clearCurrentSession = async (): Promise<void> => {
-        if (!restaurantSlug || !tableId) return;
+        if (!restaurantSlug || !tableId || serviceType !== 'DINING') return;
 
         try {
-            // 🔧 CORRECTION: Passer tableId tel quel pour le nettoyage
-            await orderService.clearSession(restaurantSlug, tableId);
+            await orderService.clearDiningSession(restaurantSlug, tableId);
             setCurrentOrder(null);
         } catch (err) {
             console.error('❌ Erreur lors du nettoyage de session:', err);
@@ -144,7 +156,7 @@ export const useOrder = (
         error,
         clearError: () => setError(null),
 
-        // 🔄 Compatibilité (deprecated - à supprimer plus tard)
+        // Compatibilité (deprecated)
         isCreatingOrder: isAddingItems,
         createOrder: async () => null,
         sentOrders: currentOrder ? [currentOrder] : [],

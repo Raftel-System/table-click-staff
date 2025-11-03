@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import {useState} from "react";
-import {orderService} from "@/services/orderService.ts";
-import {useZones} from "@/hooks/useZones.ts";
+import { useState } from "react";
+import { orderService } from "@/services/orderService.ts";
+import { useZones } from "@/hooks/useZones.ts";
 
 interface NewOrderCardProps {
-  restaurantSlug: string;
+    restaurantSlug: string;
 }
 
 export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
@@ -19,28 +19,24 @@ export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
         setIsCreating(true);
 
         try {
-            // 🆕 Trouver la zone takeaway
+            // Trouver la zone takeaway
             const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
             const zoneId = takeawayZone?.id || 'emporter';
 
             console.log('🆕 Création nouvelle commande à emporter dans zone:', zoneId);
 
-            // Créer directement une nouvelle commande EMP
-            const newOrder = await orderService.getOrCreateSessionOrder(
+            // 🔧 Créer une commande TAKEAWAY sans passer par les sessions
+            const newOrder = await orderService.createTakeawayOrder(
                 restaurantSlug,
-                `NEW_${Date.now()}`, // ID temporaire unique pour créer la session
-                'TAKEAWAY',
                 zoneId
             );
 
-            // Rediriger vers la commande créée avec son vrai numéro
-            navigate(`/${restaurantSlug}/zones/${zoneId}/commande/${newOrder.number}`);
+            // Rediriger vers la commande créée
+            navigate(`/${restaurantSlug}/zones/${zoneId}/commande/${newOrder.id}`);
 
         } catch (error) {
             console.error('❌ Erreur lors de la création de commande:', error);
-            // En cas d'erreur, fallback vers un ID temporaire
-            const fallbackId = `EMP_${Date.now()}`;
-            navigate(`/${restaurantSlug}/commande/emporter/${fallbackId}`);
+            alert('Erreur lors de la création de la commande');
         } finally {
             setIsCreating(false);
         }
@@ -55,8 +51,8 @@ export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
         >
             <Plus className="w-8 h-8 theme-primary-text mb-2" />
             <span className="theme-foreground-text font-medium text-sm">
-          {isCreating ? 'Création...' : 'Nouvelle commande'}
-        </span>
+                {isCreating ? 'Création...' : 'Nouvelle commande'}
+            </span>
         </div>
     );
 };

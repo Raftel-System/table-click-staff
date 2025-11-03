@@ -536,7 +536,7 @@ const Commande = () => {
     }
 
 
-    // Pour les tables normales (inchangé)
+    // Pour les tables normales
     const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
     const tableNum = tableInfo?.table?.numero || 'inconnue';
     const tableInfoStr = `Table ${tableNum}`;
