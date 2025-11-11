@@ -199,7 +199,7 @@ const Commande = () => {
         const tablesRef = collection(db, `restaurants/${restaurantSlug}/tables`);
         const tableQuery = query(tablesRef, where('active', '==', true));
         const tablesSnapshot = await getDocs(tableQuery);
-        let foundTable = null;
+        let foundTable: { zoneId?: any; id?: string; } | null = null;
 
         tablesSnapshot.forEach((doc) => {
           if (doc.id === tableId) {
@@ -492,7 +492,7 @@ const Commande = () => {
     note?: string
   }) => {
     setSelectedItem(null);
-    const isSent = currentOrder?.items?.some((orderItem, index) =>
+    const isSent = currentOrder?.items?.some((_, index) =>
         `${currentOrder.id}-${index}` === item.id
     ) || false;
     setEditingItem({ ...item, isSent });
@@ -523,7 +523,12 @@ const Commande = () => {
     const currentZone = zones.find(zone => zone.id === zoneId);
     console.log("currentZone : ", currentZone);
     if (!currentZone) {
-      return ;
+      return {
+        zone: 'Zone inconnue',
+        table: null,
+        numero: currentOrderNumber,
+        fullInfo: 'Zone inconnue',
+      };
     }
 
     if (currentZone.serviceType === 'TAKEAWAY') {

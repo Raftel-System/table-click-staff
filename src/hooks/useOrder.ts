@@ -16,7 +16,10 @@ export const useOrder = (
     // Créer ou récupérer la commande au chargement
     useEffect(() => {
         if (!restaurantSlug || !tableId || !serviceType || !zoneId) return;
-        if (isInitialized) return;
+
+        // Réinitialiser si les paramètres changent
+        setIsInitialized(false);
+        setCurrentOrder(null);
 
         const initializeOrder = async () => {
             setIsLoadingOrder(true);
@@ -158,7 +161,6 @@ export const useOrder = (
 
         // Compatibilité (deprecated)
         isCreatingOrder: isAddingItems,
-        createOrder: async () => null,
         sentOrders: currentOrder ? [currentOrder] : [],
         isLoadingOrders: isLoadingOrder
     };

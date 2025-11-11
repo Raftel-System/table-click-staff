@@ -339,6 +339,39 @@ class OrderService {
     }
 
     /**
+     * Récupérer une commande par son ID (utilisé pour TAKEAWAY)
+     */
+    async getOrderById(
+        restaurantSlug: string,
+        orderId: string
+    ): Promise<Order | null> {
+        try {
+            const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
+            const orderSnapshot = await get(orderRef);
+
+            if (!orderSnapshot.exists()) {
+                console.warn('⚠️ Commande non trouvée:', orderId);
+                return null;
+            }
+
+            const orderData = orderSnapshot.val() as Order;
+
+            // Sécuriser les données
+            const secureOrder: Order = {
+                ...orderData,
+                items: Array.isArray(orderData.items) ? orderData.items : [],
+                total: typeof orderData.total === 'number' ? orderData.total : 0
+            };
+
+            console.log('✅ Commande récupérée:', secureOrder.number);
+            return secureOrder;
+        } catch (error) {
+            console.error('❌ Erreur récupération commande:', error);
+            throw new Error('Impossible de récupérer la commande');
+        }
+    }
+
+    /**
      * Nettoyer la session d'une table (DINING uniquement)
      * Appelé quand une table est libérée
      */
