@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { orderService, type Order, type OrderItem } from '@/services/orderService';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { rtDatabase  } from '@/lib/firebase';
+import {get, ref, serverTimestamp, update} from "firebase/database";
 
 export const useOrder = (
     restaurantSlug: string,
@@ -87,6 +90,51 @@ export const useOrder = (
         };
     }, [restaurantSlug, tableId, serviceType, zoneId]);
 
+    const deleteOrderItem = async (itemIndex: number) => {
+        if (!restaurantSlug || !currentOrder) return false;
+
+        try {
+            // Référence au chemin de la commande
+            const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${currentOrder.id}`);
+
+            // Récupérer les données actuelles
+            const snapshot = await get(orderRef);
+            if (!snapshot.exists()) {
+                console.error('❌ Document inexistant dans Realtime Database');
+                return false;
+            }
+
+            const currentData = snapshot.val();
+            if (!currentData.items || !currentData.items[itemIndex]) {
+                console.error('❌ Article inexistant à cet index');
+                return false;
+            }
+
+            // Créer l'article supprimé
+            const deletedItem = {
+                ...currentData.items[itemIndex],
+                status: 'deleted',
+                deletedAt: Date.now() // timestamp UNIX pour RTDB
+            };
+
+            // Mettre à jour le tableau
+            const updatedItems = [...currentData.items];
+            updatedItems[itemIndex] = deletedItem;
+
+            // Mise à jour dans RTDB
+            await update(orderRef, {
+                items: updatedItems,
+                updatedAt: Date.now()
+            });
+
+            console.log('✅ Article marqué comme supprimé dans Realtime Database');
+            return true;
+        } catch (err) {
+            console.error('❌ Erreur suppression article dans RTDB:', err);
+            return false;
+        }
+    };
+
     // Ajouter des items à la commande existante
     const addItemsToCurrentOrder = async (items: OrderItem[]): Promise<boolean> => {
         if (!restaurantSlug || !currentOrder) {
@@ -152,6 +200,7 @@ export const useOrder = (
         addItemsToCurrentOrder,
         updateOrderStatus,
         clearCurrentSession,
+        deleteOrderItem,
 
         // États
         isLoadingOrder,

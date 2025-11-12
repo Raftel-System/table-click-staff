@@ -19,7 +19,7 @@ export const CartList = ({
                              currentOrder = null,
                              isLoadingOrder = false
                          }: CartListProps) => {
-    const { items, total, removeItem } = useCartStore();
+    const { items, total } = useCartStore();
     const [cancelModal, setCancelModal] = useState<{ isOpen: boolean; item: any | null }>({
         isOpen: false,
         item: null
@@ -41,7 +41,6 @@ export const CartList = ({
     };
 
     const handleEditItem = (item: any) => {
-        // Édition directe pour tous les articles - la confirmation se fera dans AdjustmentPanel
         if (onEditItem) {
             onEditItem({
                 id: item.id,
@@ -53,13 +52,8 @@ export const CartList = ({
         }
     };
 
-    const handleCancelSentItem = (item: any) => {
-        setCancelModal({ isOpen: true, item });
-    };
-
     const handleConfirmCancel = (informKitchen: boolean) => {
         if (cancelModal.item) {
-            // TODO: Ici on devrait annuler dans la base de données aussi
             console.log(`Article annulé. Informer cuisine: ${informKitchen}`);
         }
         setCancelModal({ isOpen: false, item: null });
@@ -71,33 +65,33 @@ export const CartList = ({
         }
     };
 
+    // Filtre pour n'afficher que les articles envoyés non supprimés ou avec status 'deleted'
+    const visibleServerItems = currentOrder?.items?.filter(
+        item => !item.status || item.status !== 'deleted'
+    ) || [];
+
+
+    console.log("VisibleServeritmes: ", visibleServerItems);
     return (
         <div className="w-80 theme-header-bg flex flex-col h-screen border-l border-gray-200">
-            {/* Header Panier - FIXE */}
+            {/* Header Panier */}
             <div className="p-4 border-b border-gray-200 theme-header-bg flex-shrink-0">
                 <div className="flex justify-between items-center">
-                    <h3 className="font-bold theme-foreground-text">
-                        {orderNumber}
-                    </h3>
-                    <div className="theme-primary-text font-bold">
-                        Total: {totalAmount.toFixed(2)}€
-                    </div>
+                    <h3 className="font-bold theme-foreground-text">{orderNumber}</h3>
+                    <div className="theme-primary-text font-bold">Total: {totalAmount.toFixed(2)}€</div>
                 </div>
             </div>
 
-            {/* Container pour le scroll - CRITIQUE */}
+            {/* Scrollable container */}
             <div className="flex-1 min-h-0 relative">
-                {/* Zone scrollable avec hauteur forcée */}
                 <div className="absolute inset-0 overflow-y-auto">
                     <div className="p-4">
-                        {/* Loading state initial */}
                         {isLoadingOrder && (
                             <div className="text-center theme-secondary-text text-sm py-8">
                                 Initialisation de la commande...
                             </div>
                         )}
 
-                        {/* Affichage séparé des articles */}
                         {!isLoadingOrder && (
                             <div className="space-y-3">
                                 {/* Section articles en attente */}
@@ -108,7 +102,7 @@ export const CartList = ({
                                             En attente ({pendingItems.length})
                                         </h4>
 
-                                        {pendingItems.map((item) => (
+                                        {pendingItems.map(item => (
                                             <div
                                                 key={item.id}
                                                 className="theme-menu-card p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors mb-2"
@@ -140,19 +134,19 @@ export const CartList = ({
                                     </div>
                                 )}
 
-                                {/* Section articles envoyés */}
-                                {currentOrder?.items && currentOrder.items.length > 0 && (
+                                {/* Section articles envoyés filtrés */}
+                                {visibleServerItems.length > 0 && (
                                     <div className="mb-4">
                                         <h4 className="text-sm font-semibold theme-success-text mb-2 flex items-center gap-2">
                                             <Check className="w-4 h-4" />
-                                            Envoyé • {currentOrder.status}
+                                            Envoyé • {currentOrder?.status}
                                         </h4>
                                         <div className="text-xs theme-secondary-text mb-3">
-                                            Créé à {new Date(currentOrder.createdAt).toLocaleTimeString('fr-FR', {
+                                            Créé à {new Date(currentOrder!.createdAt).toLocaleTimeString('fr-FR', {
                                             hour: '2-digit',
                                             minute: '2-digit'
                                         })}
-                                            {currentOrder.lastUpdated && (
+                                            {currentOrder?.lastUpdated && (
                                                 <span> • Mis à jour à {new Date(currentOrder.lastUpdated).toLocaleTimeString('fr-FR', {
                                                     hour: '2-digit',
                                                     minute: '2-digit'
@@ -160,9 +154,9 @@ export const CartList = ({
                                             )}
                                         </div>
 
-                                        {currentOrder.items.map((item, index) => {
+                                        {visibleServerItems.map((item, index) => {
                                             const serverItem = {
-                                                id: `${currentOrder.id}-${index}`,
+                                                id: `${currentOrder!.id}-${index}`,
                                                 nom: item.nom,
                                                 prix: item.prix,
                                                 quantite: item.quantite,
@@ -207,21 +201,11 @@ export const CartList = ({
                                 )}
 
                                 {/* Message si complètement vide */}
-                                {!isLoadingOrder && pendingItems.length === 0 && (!currentOrder?.items || currentOrder.items.length === 0) && (
+                                {pendingItems.length === 0 && visibleServerItems.length === 0 && (
                                     <div className="text-center theme-secondary-text text-sm py-8">
                                         Aucun article
                                     </div>
                                 )}
-
-                                {/* ÉLÉMENTS DE TEST POUR LE SCROLL - À SUPPRIMER EN PRODUCTION */}
-                                {/* Décommentez pour tester le scroll */}
-                                {/*
-                                {Array.from({ length: 10 }, (_, i) => (
-                                    <div key={`test-${i}`} className="bg-red-100 p-3 rounded mb-2">
-                                        Test scroll item {i + 1}
-                                    </div>
-                                ))}
-                                */}
                             </div>
                         )}
                     </div>

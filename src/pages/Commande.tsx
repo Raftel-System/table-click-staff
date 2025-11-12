@@ -229,6 +229,7 @@ const Commande = () => {
     addItemsToCurrentOrder,
     updateOrderStatus,
     clearCurrentSession,
+    deleteOrderItem,
     isLoadingOrder,
     isAddingItems,
     error,
@@ -507,9 +508,19 @@ const Commande = () => {
     setEditingItem(null);
   };
 
-  const handleCancelEditingItem = (id: string) => {
+  const handleCancelEditingItem = async (id: string) => {
     if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
       console.log('🗑️ Suppression article serveur:', id);
+
+      // Extraire l'index de l'article depuis l'ID (format: orderId-index)
+      const itemIndex = parseInt(id.split('-').pop() || '0');
+
+      // Appeler la fonction de suppression
+      const success = await deleteOrderItem(itemIndex);
+
+      if (success) {
+        console.log('✅ Article supprimé avec succès');
+      }
     } else {
       removeItem(id);
     }
@@ -521,7 +532,6 @@ const Commande = () => {
   const getHeaderInfo = () => {
 
     const currentZone = zones.find(zone => zone.id === zoneId);
-    console.log("currentZone : ", currentZone);
     if (!currentZone) {
       return {
         zone: 'Zone inconnue',

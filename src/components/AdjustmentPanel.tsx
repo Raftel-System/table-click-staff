@@ -26,28 +26,79 @@ interface ConfirmationModalProps {
 }
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, action }: ConfirmationModalProps) => {
+  const [pinCode, setPinCode] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPinCode('');
+      setPinError(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const actionText = action === 'modify' ? 'modifier' : 'supprimer';
   const actionTextCapitalized = action === 'modify' ? 'Modifier' : 'Supprimer';
   const buttonColor = action === 'modify' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700';
 
+  const handleConfirm = () => {
+    if (action === 'delete') {
+      // Vérifier le code PIN pour la suppression
+      if (pinCode !== '0000') {
+        setPinError(true);
+        return;
+      }
+    }
+    onConfirm();
+    setPinCode('');
+    setPinError(false);
+  };
+
   return (
       <div className="fixed inset-0 theme-backdrop flex items-center justify-center z-50">
         <div className="theme-modal-bg rounded-lg p-6 max-w-md w-full mx-4 theme-shadow-lg">
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <h3 className="text-lg font-semibold theme-foreground-text mb-2">
                 {actionTextCapitalized} un article envoyé
               </h3>
-              <p className="theme-secondary-text text-sm">
+              <p className="theme-secondary-text text-sm mb-3">
                 Vous êtes sur le point de {actionText} <strong>"{itemName}"</strong> qui a déjà été envoyé en cuisine.
               </p>
+
+              {action === 'delete' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium theme-foreground-text mb-2">
+                      Code PIN requis :
+                    </label>
+                    <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={pinCode}
+                        onChange={(e) => {
+                          setPinCode(e.target.value);
+                          setPinError(false);
+                        }}
+                        placeholder="0000"
+                        className={`w-full px-3 py-2 border rounded-lg text-center text-lg tracking-widest ${
+                            pinError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        }`}
+                        autoFocus
+                    />
+                    {pinError && (
+                        <p className="text-red-600 text-sm mt-2">
+                          Code PIN incorrect. Veuillez réessayer.
+                        </p>
+                    )}
+                  </div>
+              )}
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-6">
             <button
                 onClick={onClose}
                 className="flex-1 theme-button-secondary py-2 px-4 rounded-lg"
@@ -55,7 +106,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, action }: Con
               Annuler
             </button>
             <button
-                onClick={onConfirm}
+                onClick={handleConfirm}
                 className={`flex-1 ${buttonColor} text-white py-2 px-4 rounded-lg font-semibold transition-colors`}
             >
               Continuer

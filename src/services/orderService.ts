@@ -9,6 +9,7 @@ export interface OrderItem {
     quantite: number;
     note?: string;
     menuConfig?: any;
+    status: any;
 }
 
 export interface Order {
