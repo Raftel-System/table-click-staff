@@ -20,6 +20,13 @@ export const useOrder = (
     useEffect(() => {
         if (!restaurantSlug || !tableId || !serviceType || !zoneId) return;
 
+        console.log('🔄 useOrder déclenché avec:', {
+            restaurantSlug,
+            tableId,
+            serviceType,
+            zoneId
+        });
+
         // Réinitialiser si les paramètres changent
         setIsInitialized(false);
         setCurrentOrder(null);

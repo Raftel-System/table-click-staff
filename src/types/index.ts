@@ -79,8 +79,8 @@ export interface CommandeEmporter {
   id: string;
   numero: number;
   heure: string;
-  duree: number; // en minutes
-  statut: 'EN_COURS' | 'PRETE' | 'LIVREE';
+  duree: number;
+  statut: 'pending' | 'ready' | 'delivered';
 }
 
 export interface Zone {

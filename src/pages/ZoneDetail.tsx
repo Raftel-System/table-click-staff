@@ -5,6 +5,8 @@ import { useTables } from '../hooks/useTables';
 import { TableCard } from '../components/TableCard';
 import { OrderCard } from '../components/OrderCard';
 import { NewOrderCard } from '../components/NewOrderCard';
+import {useTakeAwayOrders} from "@/hooks/useTakeAwayOrders.tsx";
+import type {Order} from "@/services/orderService.ts";
 
 const ZoneDetail = () => {
     const { restaurantSlug, zoneId } = useParams<{ restaurantSlug: string; zoneId: string }>();
@@ -15,6 +17,12 @@ const ZoneDetail = () => {
 
     // Trouver la zone actuelle
     const currentZone = zones.find(zone => zone.id === zoneId);
+
+    const { orders: takeAwayOrders } = useTakeAwayOrders(
+        restaurantSlug,
+        zoneId,
+        currentZone?.serviceType === 'TAKEAWAY'
+    );
 
     if (zonesLoading || tablesLoading) {
         return (
@@ -69,9 +77,11 @@ const ZoneDetail = () => {
                 </>
             );
         } else {
-            // Zone takeaway (pas de tables)
-            // TODO: Récupérer les commandes emporter depuis Firebase
-            const mockOrders = []; // Remplacer par vraies données
+
+            const enCours = takeAwayOrders.filter(o => ['IN_PROGRESS', 'preparing', 'pending', 'sent']
+                    .includes(o.status || '')).length;
+            const pretes = takeAwayOrders.filter(o => ['READY', 'ready', 'served']
+                .includes(o.status || '')).length;
 
             return (
                 <>
@@ -79,7 +89,7 @@ const ZoneDetail = () => {
                         <div>
                             <h1 className="text-3xl font-bold theme-gradient-text mb-2">{currentZone.nom}</h1>
                             <p className="theme-secondary-text">
-                                {mockOrders.length} commandes • 0 en cours • 0 prêtes
+                                Totale des commandes : {enCours} en cours
                             </p>
                         </div>
                         <button
@@ -94,8 +104,10 @@ const ZoneDetail = () => {
                     {/* Grid des commandes */}
                     <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                         <NewOrderCard restaurantSlug={restaurantSlug || ''} />
-                        {mockOrders.map((order: any) => (
-                            <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} />
+                        {takeAwayOrders
+                            .filter(o => o.status !== 'served')
+                            .map((order: Order) => (
+                            <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} zoneId={zoneId} />
                         ))}
                     </div>
                 </>
