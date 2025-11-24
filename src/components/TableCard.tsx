@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { rtDatabase } from '@/lib/firebase';
 import { ref, onValue, query, equalTo, off, orderByKey } from 'firebase/database';
+import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 interface Table {
   id: string;
@@ -18,6 +19,7 @@ interface TableCardProps {
 }
 
 export const TableCard = ({ table, restaurantSlug }: TableCardProps) => {
+  const { setCreatingInProgress } = useServiceTypeContextStore();
   const navigate = useNavigate();
   const [isOccupied, setIsOccupied] = useState(false);
 
@@ -46,6 +48,7 @@ export const TableCard = ({ table, restaurantSlug }: TableCardProps) => {
   }, [restaurantSlug, table.id]);
 
   const handleClick = () => {
+    setCreatingInProgress(!isOccupied);
     navigate(`/${restaurantSlug}/zones/${table.zoneId}/commande/${table.id}`);
   };
 

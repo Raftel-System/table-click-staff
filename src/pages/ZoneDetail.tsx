@@ -7,9 +7,12 @@ import { OrderCard } from '../components/OrderCard';
 import { NewOrderCard } from '../components/NewOrderCard';
 import {useTakeAwayOrders} from "@/hooks/useTakeAwayOrders.tsx";
 import type {Order} from "@/services/orderService.ts";
+import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
+import {useEffect} from "react";
 
 const ZoneDetail = () => {
     const { restaurantSlug, zoneId } = useParams<{ restaurantSlug: string; zoneId: string }>();
+    const { setServiceType } = useServiceTypeContextStore();
     const navigate = useNavigate();
 
     const { zones, loading: zonesLoading } = useZones(restaurantSlug || '');
@@ -23,6 +26,14 @@ const ZoneDetail = () => {
         zoneId,
         currentZone?.serviceType === 'TAKEAWAY'
     );
+
+    useEffect(() => {
+        console.log("Current Zone Service Type:", currentZone?.serviceType);
+        if (currentZone?.serviceType) {
+            console.log("Setting service type in context store:", currentZone.serviceType);
+            setServiceType(currentZone?.serviceType);
+        }
+    }, [currentZone?.serviceType, setServiceType]);
 
     if (zonesLoading || tablesLoading) {
         return (

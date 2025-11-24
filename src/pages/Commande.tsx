@@ -12,6 +12,7 @@ import { useOrder } from '../hooks/useOrder';
 import { useZones } from '@/hooks/useZones';
 import type { MenuItem } from '@/types';
 import { MenuStepOptionsPanel } from '@/components/ui/MenuStepOptionsPanel';
+import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 // Types pour la gestion des menus composés
 interface MenuStepSelections {

@@ -3,6 +3,7 @@ import { orderService, type Order, type OrderItem } from '@/services/orderServic
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { rtDatabase  } from '@/lib/firebase';
 import {get, ref, serverTimestamp, update} from "firebase/database";
+import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 export const useOrder = (
     restaurantSlug: string,
@@ -10,6 +11,7 @@ export const useOrder = (
     serviceType?: 'DINING' | 'TAKEAWAY',
     zoneId?: string
 ) => {
+    const { isTakeAway, isDining, creatingInProgress, setCreatingInProgress } = useServiceTypeContextStore();
     const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
     const [isAddingItems, setIsAddingItems] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -19,13 +21,6 @@ export const useOrder = (
     // Créer ou récupérer la commande au chargement
     useEffect(() => {
         if (!restaurantSlug || !tableId || !serviceType || !zoneId) return;
-
-        console.log('🔄 useOrder déclenché avec:', {
-            restaurantSlug,
-            tableId,
-            serviceType,
-            zoneId
-        });
 
         // Réinitialiser si les paramètres changent
         setIsInitialized(false);
@@ -46,13 +41,15 @@ export const useOrder = (
                 let sessionOrder: Order;
 
                 // 🔧 CORRECTION: Utiliser la bonne méthode selon le type de service
-                if (serviceType === 'DINING') {
+                if (serviceType === 'DINING' && isDining() && !isTakeAway()) {
                     // Pour les tables : utiliser le système de session
                     sessionOrder = await orderService.getOrCreateDiningOrder(
                         restaurantSlug,
                         tableId,
-                        zoneId
+                        zoneId,
+                        creatingInProgress
                     );
+                    if (creatingInProgress) setCreatingInProgress(false);
                 } else {
                     // Pour les takeaways : récupérer la commande par son ID
                     // tableId contient en fait l'ID de la commande pour les takeaways

@@ -1,6 +1,7 @@
 import { rtDatabase } from '@/lib/firebase';
 import { ref, get, set, update, serverTimestamp, runTransaction, onValue, off } from 'firebase/database';
 import { printService } from './printService';
+import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 export interface OrderItem {
     id: string;
@@ -133,7 +134,7 @@ class OrderService {
     async getOrCreateDiningOrder(
         restaurantSlug: string,
         tableId: string,
-        zoneId: string
+        zoneId: string,
     ): Promise<Order> {
         try {
             const sessionKey = `table_${tableId}`;
