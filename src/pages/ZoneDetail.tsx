@@ -113,13 +113,13 @@ const ZoneDetail = () => {
                     </div>
 
                     {/* Grid des commandes */}
-                    <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                    <div className="flex flex-wrap gap-3">
                         <NewOrderCard restaurantSlug={restaurantSlug || ''} />
                         {takeAwayOrders
                             .filter(o => o.status !== 'served')
                             .map((order: Order) => (
-                            <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} zoneId={zoneId} />
-                        ))}
+                                <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} zoneId={zoneId} />
+                            ))}
                     </div>
                 </>
             );
