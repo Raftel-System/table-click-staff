@@ -67,7 +67,7 @@ const ZoneDetail = () => {
                         <div>
                             <h1 className="text-3xl font-bold theme-gradient-text mb-2">{currentZone.nom}</h1>
                             <p className="theme-secondary-text">
-                                {tables.length} tables • {tablesOccupees.length} occupées • {tablesLibres.length} libres
+                                {tables.length} tables ({tablesOccupees.length} occupées • {tablesLibres.length} libres)
                             </p>
                         </div>
                         <button
@@ -80,7 +80,7 @@ const ZoneDetail = () => {
                     </div>
 
                     {/* Grid des tables */}
-                    <div className="grid grid-cols-auto-fill gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+                    <div className="flex flex-wrap gap-2">
                         {tables.map((table) => (
                             <TableCard key={table.id} table={table} restaurantSlug={restaurantSlug || ''} />
                         ))}
@@ -113,7 +113,7 @@ const ZoneDetail = () => {
                     </div>
 
                     {/* Grid des commandes */}
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                         <NewOrderCard restaurantSlug={restaurantSlug || ''} />
                         {takeAwayOrders
                             .filter(o => o.status !== 'served')
