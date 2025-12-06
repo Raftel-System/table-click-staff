@@ -228,21 +228,21 @@ export const runValidationTests = () => {
   
   // Test 1: Validation step valide
   console.assert(
-    validateStep(testStep, ['opt1']).isValid === true,
+    validateStep(testStep, ['opt1']).isValid,
     '❌ Test 1 échoué: Step avec 1 sélection devrait être valide'
   );
   console.log('✅ Test 1: Step avec sélection valide');
   
   // Test 2: Validation step invalide (pas assez)
   console.assert(
-    validateStep(testStep, []).isValid === false,
+    !validateStep(testStep, []).isValid,
     '❌ Test 2 échoué: Step sans sélection devrait être invalide'
   );
   console.log('✅ Test 2: Step sans sélection invalide');
   
   // Test 3: Validation step invalide (trop)
   console.assert(
-    validateStep(testStep, ['opt1', 'opt2', 'opt3']).isValid === false,
+    !validateStep(testStep, ['opt1', 'opt2', 'opt3']).isValid,
     '❌ Test 3 échoué: Step avec trop de sélections devrait être invalide'
   );
   console.log('✅ Test 3: Step avec trop de sélections invalide');

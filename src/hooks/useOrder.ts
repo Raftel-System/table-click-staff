@@ -31,12 +31,7 @@ export const useOrder = (
             setError(null);
 
             try {
-                console.log('🚀 Initialisation commande:', {
-                    restaurantSlug,
-                    tableId,
-                    serviceType,
-                    zoneId
-                });
+
 
                 let sessionOrder: Order;
 
@@ -75,7 +70,6 @@ export const useOrder = (
                 );
 
                 return () => {
-                    console.log('🧹 Nettoyage listener commande');
                     unsubscribe();
                 };
             } catch (err) {
@@ -131,7 +125,6 @@ export const useOrder = (
                 updatedAt: Date.now()
             });
 
-            console.log('✅ Article marqué comme supprimé dans Realtime Database');
             return true;
         } catch (err) {
             console.error('❌ Erreur suppression article dans RTDB:', err);

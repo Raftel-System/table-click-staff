@@ -115,7 +115,6 @@ class OrderService {
             const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${orderId}`);
             await set(orderRef, this.cleanObject(newOrder));
 
-            console.log('✅ Commande à emporter créée:', newOrder.number);
             return newOrder;
         } catch (error) {
             console.error('❌ Erreur création commande takeaway:', error);
@@ -138,7 +137,6 @@ class OrderService {
     ): Promise<Order> {
         try {
             const sessionKey = `table_${tableId}`;
-            console.log('🔧 Session DINING key:', sessionKey);
 
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}/currentOrder`);
             const sessionSnapshot = await get(sessionRef);
@@ -157,7 +155,6 @@ class OrderService {
                         items: Array.isArray(existingOrder.items) ? existingOrder.items : [],
                         total: typeof existingOrder.total === 'number' ? existingOrder.total : 0
                     };
-                    console.log('✅ Commande DINING existante récupérée:', secureOrder.number);
                     return secureOrder;
                 }
             }
@@ -184,7 +181,6 @@ class OrderService {
             // Associer cette commande à la session de la table
             await set(sessionRef, orderId);
 
-            console.log('✅ Nouvelle commande DINING créée:', newOrder.number);
             return newOrder;
         } catch (error) {
             console.error('❌ Erreur création/récupération commande DINING:', error);
@@ -304,7 +300,6 @@ class OrderService {
                 lastUpdated: serverTimestamp()
             });
 
-            console.log(`✅ Statut mis à jour: ${orderId} → ${status}`);
         } catch (error) {
             console.error('❌ Erreur mise à jour statut:', error);
             throw new Error('Impossible de mettre à jour le statut');
@@ -365,7 +360,6 @@ class OrderService {
                 total: typeof orderData.total === 'number' ? orderData.total : 0
             };
 
-            console.log('✅ Commande récupérée:', secureOrder.number);
             return secureOrder;
         } catch (error) {
             console.error('❌ Erreur récupération commande:', error);
@@ -383,12 +377,10 @@ class OrderService {
     ): Promise<void> {
         try {
             const sessionKey = `table_${tableId}`;
-            console.log('🧹 Nettoyage session DINING:', sessionKey);
 
             const sessionRef = ref(rtDatabase, `restaurants/${restaurantSlug}/sessions/${sessionKey}`);
             await set(sessionRef, null);
 
-            console.log('✅ Session table nettoyée');
         } catch (error) {
             console.error('❌ Erreur nettoyage session:', error);
         }

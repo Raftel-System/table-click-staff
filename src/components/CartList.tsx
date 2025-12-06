@@ -71,14 +71,13 @@ export const CartList = ({
     ) || [];
 
 
-    console.log("VisibleServeritmes: ", visibleServerItems);
     return (
         <div className="w-80 theme-header-bg flex flex-col h-screen border-l border-gray-200">
             {/* Header Panier */}
             <div className="p-4 border-b border-gray-200 theme-header-bg flex-shrink-0">
                 <div className="flex justify-between items-center">
                     <h3 className="font-bold theme-foreground-text">{orderNumber}</h3>
-                    <div className="theme-primary-text font-bold">Total: {totalAmount.toFixed(2)}€</div>
+                    <div className="theme-primary-text font-bold">Total: {totalAmount?.toFixed(2)}€</div>
                 </div>
             </div>
 

@@ -23,7 +23,6 @@ export const NewOrderCard = ({ restaurantSlug }: NewOrderCardProps) => {
             const takeawayZone = zones.find(zone => zone.serviceType === 'TAKEAWAY');
             const zoneId = takeawayZone?.id || 'emporter';
 
-            console.log('🆕 Création nouvelle commande à emporter dans zone:', zoneId);
 
             // 🔧 Créer une commande TAKEAWAY sans passer par les sessions
             const newOrder = await orderService.createTakeawayOrder(

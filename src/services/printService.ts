@@ -8,7 +8,7 @@ const PRINT_SERVER_URL = 'http://localhost:3001/print-ticket'; // À remplacer p
 
 // Type pour les données d'impression
 export interface PrintData {
-    printerIp: string;
+    ip: string;
     restaurantId: string;
     serviceType: 'DINING' | 'TAKEAWAY';
     orderNumber: string;
@@ -48,7 +48,7 @@ class PrintService {
         try {
             // Construction de l'objet printData
             const printData: PrintData = {
-                printerIp: "192.168.1.102",
+                ip: "192.168.1.102",
                 restaurantId: restaurantSlug,
                 serviceType,
                 orderNumber,
@@ -71,7 +71,6 @@ class PrintService {
                 };
             }
 
-            console.log('🖨️ Envoi à l\'impression:', printData);
 
             // Envoi au serveur d'impression
             const response = await fetch(PRINT_SERVER_URL, {
@@ -86,7 +85,6 @@ class PrintService {
                 throw new Error(`Erreur serveur d'impression: ${response.status}`);
             }
 
-            console.log('✅ Commande envoyée à l\'impression avec succès');
             return true;
         } catch (error) {
             console.error('❌ Erreur lors de l\'impression:', error);

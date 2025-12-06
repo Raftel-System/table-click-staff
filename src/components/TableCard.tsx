@@ -33,7 +33,6 @@ export const TableCard = ({ table, restaurantSlug }: TableCardProps) => {
 
     const unsubscribe = onValue(tableOrdersQuery, (snapshot) => {
       let hasActiveOrder = false;
-      console.log("snapshot", snapshot);
       snapshot.forEach((childSnapshot) => {
         const order = childSnapshot.val();
         if (order.status !== 'served' && order.status !== 'cancelled') {

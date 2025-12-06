@@ -53,15 +53,12 @@ const DevPage: React.FC = () => {
             const configRef = doc(db, `restaurants/${restaurantSlug.trim()}/settings/config`);
             const configSnap = await getDoc(configRef);
 
-            console.log('Config snap exists:', configSnap.exists());
-            console.log('Config data:', configSnap.data());
-
             if (configSnap.exists()) {
                 const data = {
                     id: restaurantSlug.trim(),
                     ...configSnap.data()
                 };
-                console.log('Setting restaurant config data:', data);
+
                 setRestaurantData(data);
             } else {
                 console.log('Restaurant config not found');

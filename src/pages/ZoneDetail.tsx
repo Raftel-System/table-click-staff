@@ -28,7 +28,6 @@ const ZoneDetail = () => {
     );
 
     useEffect(() => {
-        console.log("Current Zone Service Type:", currentZone?.serviceType);
         if (currentZone?.serviceType) {
             console.log("Setting service type in context store:", currentZone.serviceType);
             setServiceType(currentZone?.serviceType);

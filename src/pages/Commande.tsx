@@ -300,15 +300,12 @@ const Commande = () => {
 
   // Fonctions pour gérer la sélection d'articles normaux
   const handleItemSelect = (item: MenuItem) => {
-    console.log('🎯 handleItemSelect - item:', item);
 
     setEditingItem(null);
     setSelectedItem(item);
 
     if (item.isComposedMenu && item.composedMenuConfig) {
-      console.log('🎯 handleItemSelect - composedMenuConfig:', item.composedMenuConfig);
-
-      setIsMenuConfig(true);
+     setIsMenuConfig(true);
       setCurrentMenu(item);
       setMenuStepSelections({});
       setCurrentStepIndex(0);
@@ -511,8 +508,6 @@ const Commande = () => {
 
   const handleCancelEditingItem = async (id: string) => {
     if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
-      console.log('🗑️ Suppression article serveur:', id);
-
       // Extraire l'index de l'article depuis l'ID (format: orderId-index)
       const itemIndex = parseInt(id.split('-').pop() || '0');
 
