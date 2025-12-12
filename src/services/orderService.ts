@@ -1,7 +1,6 @@
 import { rtDatabase } from '@/lib/firebase';
 import { ref, get, set, update, serverTimestamp, runTransaction, onValue, off } from 'firebase/database';
 import { printService } from './printService';
-import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 export interface OrderItem {
     id: string;
@@ -250,16 +249,25 @@ class OrderService {
 
             if (currentOrder.serviceType === 'DINING' && currentOrder.tableId) {
                 try {
-                    const tableRef = ref(rtDatabase, `restaurants/${restaurantSlug}/tables/${currentOrder.tableId}`);
-                    const tableSnapshot = await get(tableRef);
+                    // Import dynamique de Firestore
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+
+                    // Récupérer les infos de la table depuis Firestore
+                    const tableRef = doc(db, `restaurants/${restaurantSlug}/tables`, currentOrder.tableId);
+                    const tableSnapshot = await getDoc(tableRef);
+
                     if (tableSnapshot.exists()) {
-                        const tableData = tableSnapshot.val();
+                        const tableData = tableSnapshot.data();
                         tableNumber = tableData.numero;
 
-                        const zoneRef = ref(rtDatabase, `restaurants/${restaurantSlug}/zones/${currentOrder.zoneId}`);
-                        const zoneSnapshot = await get(zoneRef);
+                        // Récupérer les infos de la zone depuis Firestore
+                        const zoneRef = doc(db, `restaurants/${restaurantSlug}/zones`, currentOrder.zoneId);
+                        const zoneSnapshot = await getDoc(zoneRef);
+
                         if (zoneSnapshot.exists()) {
-                            zoneName = zoneSnapshot.val().nom || 'Zone inconnue';
+                            const zoneData = zoneSnapshot.data();
+                            zoneName = zoneData.nom || 'Zone inconnue';
                         }
                     }
                 } catch (error) {

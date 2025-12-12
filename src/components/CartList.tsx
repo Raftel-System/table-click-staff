@@ -32,12 +32,36 @@ export const CartList = ({
     const totalAmount = pendingItems.length > 0 ? total : (currentOrder?.total || 0);
 
     const formatMenuConfig = (menuConfig: any) => {
-        if (!menuConfig) return '';
-        const config = Object.entries(menuConfig)
-            .filter(([_, value]) => value)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(' • ');
-        return config ? ` (${config})` : '';
+        if (!menuConfig || typeof menuConfig !== 'object') return '';
+
+        // Fonction pour compter les occurrences et formater
+        const formatOptionsWithCount = (options: string[]): string => {
+            if (!Array.isArray(options) || options.length === 0) return '';
+
+            // Compter les occurrences de chaque option
+            const counts = options.reduce((acc, option) => {
+                acc[option] = (acc[option] || 0) + 1;
+                return acc;
+            }, {} as { [key: string]: number });
+
+            // Formater avec "x2", "x3", etc. pour les doublons
+            return Object.entries(counts)
+                .map(([option, count]) =>
+                    count > 1 ? `${option} x${count}` : option
+                )
+                .join(', ');
+        };
+
+        // Récupérer toutes les sélections de tous les steps
+        const allSelections = Object.values(menuConfig)
+            .filter(value => Array.isArray(value) && value.length > 0)
+            .map(options => formatOptionsWithCount(options as string[]))
+            .filter(Boolean);
+
+        if (allSelections.length === 0) return '';
+
+        // Joindre avec " • " et mettre entre parenthèses
+        return ` (${allSelections.join(' • ')})`;
     };
 
     const handleEditItem = (item: any) => {

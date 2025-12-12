@@ -1,18 +1,17 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { CategoryNav } from '../components/CategoryNav';
-import { ArticleGrid } from '../components/ArticleGrid';
-import { AdjustmentPanel } from '../components/AdjustmentPanel';
-import { CartList } from '../components/CartList';
-import { useCartStore } from '../stores/cartStore';
-import { useMenuCategories } from '../hooks/useMenuCategories';
-import { useMenuItems } from '../hooks/useMenuItems';
-import { useOrder } from '../hooks/useOrder';
-import { useZones } from '@/hooks/useZones';
-import type { MenuItem } from '@/types';
-import { MenuStepOptionsPanel } from '@/components/ui/MenuStepOptionsPanel';
-import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
+import {useEffect, useMemo, useState} from 'react';
+import {useNavigate, useParams} from 'react-router-dom';
+import {AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight} from 'lucide-react';
+import {CategoryNav} from '../components/CategoryNav';
+import {ArticleGrid} from '../components/ArticleGrid';
+import {AdjustmentPanel} from '../components/AdjustmentPanel';
+import {CartList} from '../components/CartList';
+import {useCartStore} from '../stores/cartStore';
+import {useMenuCategories} from '../hooks/useMenuCategories';
+import {useMenuItems} from '../hooks/useMenuItems';
+import {useOrder} from '../hooks/useOrder';
+import {useZones} from '@/hooks/useZones';
+import type {MenuItem} from '@/types';
+import {MenuStepOptionsPanel} from '@/components/ui/MenuStepOptionsPanel';
 
 // Types pour la gestion des menus composés
 interface MenuStepSelections {
@@ -209,7 +208,7 @@ const Commande = () => {
         });
 
         if (foundTable) {
-          const correspondingZone = zones.find(z => z.id === foundTable.zoneId);
+          const correspondingZone = zones.find(z => z.id === foundTable?.zoneId);
           setTableInfo({ table: foundTable, zone: correspondingZone });
         }
       } catch (error) {
@@ -379,28 +378,26 @@ const Commande = () => {
 
   const handleValidateMenu = () => {
     if (!currentMenu) return;
-    
-    // Créer le nom du menu avec les sélections
-    const menuDescription = Object.entries(menuStepSelections)
-      .map(([stepId, selectedIds]) => {
-        const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
-        const selectedOptions = selectedIds.map(optionId => 
-          step?.options.find(o => o.id === optionId)?.nom
-        ).filter(Boolean);
-        return selectedOptions.join(', ');
-      })
-      .filter(Boolean)
-      .join(' • ');
 
-    const finalName = `${currentMenu.nom} (${menuDescription})`;
+    // Créer menuConfig avec les NOMS au lieu des IDs
+    const menuConfigWithNames: { [stepId: string]: string[] } = {};
+
+    Object.entries(menuStepSelections).forEach(([stepId, selectedIds]) => {
+      const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
+      if (step) {
+        menuConfigWithNames[stepId] = selectedIds
+            .map(optionId => step.options.find(o => o.id === optionId)?.nom)
+            .filter(Boolean) as string[];
+      }
+    });
 
     // Ajouter au panier
     addItem({
-      nom: finalName,
+      nom: currentMenu.nom,  // ✅ Juste le nom, sans parenthèses ni description
       prix: totalMenuPrice,
       quantite: 1,
       note: '',
-      menuConfig: menuStepSelections
+      menuConfig: menuConfigWithNames  // ✅ Avec les noms, pas les IDs
     });
 
     // Réinitialiser le mode menu
