@@ -93,8 +93,7 @@ const ZoneDetail = () => {
 
             const enCours = takeAwayOrders.filter(o => ['IN_PROGRESS', 'preparing', 'pending', 'sent']
                 .includes(o.status || '')).length;
-            const pretes = takeAwayOrders.filter(o => ['READY', 'ready', 'served']
-                .includes(o.status || '')).length;
+
 
             return (
                 <>
@@ -120,7 +119,7 @@ const ZoneDetail = () => {
                         {takeAwayOrders
                             .filter(o => o.status !== 'served')
                             .map((order: Order) => (
-                                <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} zoneId={zoneId} />
+                                <OrderCard key={order.id} order={order} restaurantSlug={restaurantSlug || ''} zoneId={zoneId!} />
                             ))}
                     </div>
                 </>

@@ -3,7 +3,6 @@ export interface MenuConfig {
   boisson?: string;
   accompagnement?: string;
   dessert?: string;
-  // 🆕 Support pour menus composés avec selections par step
   [stepId: string]: string | string[] | undefined;
 }
 

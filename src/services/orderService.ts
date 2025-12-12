@@ -1,6 +1,7 @@
-import { rtDatabase } from '@/lib/firebase';
-import { ref, get, set, update, serverTimestamp, runTransaction, onValue, off } from 'firebase/database';
-import { printService } from './printService';
+import {rtDatabase} from '@/lib/firebase';
+import {get, off, onValue, ref, runTransaction, serverTimestamp, set, update} from 'firebase/database';
+import {printService} from './printService';
+import type {MenuConfig} from "@/types";
 
 export interface OrderItem {
     id: string;
@@ -8,7 +9,7 @@ export interface OrderItem {
     prix: number;
     quantite: number;
     note?: string;
-    menuConfig?: any;
+    menuConfig?: MenuConfig;
     status: any;
 }
 
@@ -149,12 +150,11 @@ class OrderService {
                 if (orderSnapshot.exists()) {
                     const existingOrder = orderSnapshot.val() as Order;
 
-                    const secureOrder: Order = {
+                    return {
                         ...existingOrder,
                         items: Array.isArray(existingOrder.items) ? existingOrder.items : [],
-                        total: typeof existingOrder.total === 'number' ? existingOrder.total : 0
+                        total: existingOrder.total
                     };
-                    return secureOrder;
                 }
             }
 
@@ -362,13 +362,11 @@ class OrderService {
             const orderData = orderSnapshot.val() as Order;
 
             // Sécuriser les données
-            const secureOrder: Order = {
+            return {
                 ...orderData,
                 items: Array.isArray(orderData.items) ? orderData.items : [],
-                total: typeof orderData.total === 'number' ? orderData.total : 0
+                total: orderData.total
             };
-
-            return secureOrder;
         } catch (error) {
             console.error('❌ Erreur récupération commande:', error);
             throw new Error('Impossible de récupérer la commande');
