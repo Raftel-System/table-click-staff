@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, LogOut, Zap, CheckCircle, XCircle, Search, UtensilsCrossed, MapPin, Table } from "lucide-react";
+import { Lock, LogOut, Zap, CheckCircle, XCircle, Search, UtensilsCrossed, MapPin, Table, List, FolderOpen } from "lucide-react";
 
 
 import ComposedMenuManager from "@/components/dev/ComposedMenuManager.tsx";
 import ZoneManager from "@/components/dev/ZoneManager.tsx";
 import TableManager from "@/components/dev/TableManager.tsx";
+import MenuItemManager from "@/components/dev/MenuItemManager.tsx";
+import CategoryManager from "@/components/dev/CategoryManager.tsx";
 
 const DevPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -86,7 +88,7 @@ const DevPage: React.FC = () => {
                             <Lock className="w-8 h-8 text-white" />
                         </div>
                         <CardTitle className="text-2xl">🔧 Dev Portal</CardTitle>
-                        <CardDescription>Gestionnaire CRUD - Menus, Zones & Tables</CardDescription>
+                        <CardDescription>Gestionnaire CRUD - Menus, Items, Catégories, Zones & Tables</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
@@ -127,7 +129,7 @@ const DevPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <CardTitle className="text-2xl">🔧 Dev Portal</CardTitle>
-                                    <CardDescription>Gestionnaire CRUD - Menus, Zones & Tables</CardDescription>
+                                    <CardDescription>Gestionnaire CRUD - Menus, Items, Catégories, Zones & Tables</CardDescription>
                                 </div>
                             </div>
                             <Button variant="outline" onClick={handleLogout}>
@@ -284,10 +286,18 @@ const DevPage: React.FC = () => {
                         <Card>
                             <CardContent className="pt-6">
                                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                                    <TabsList className="grid w-full grid-cols-3">
+                                    <TabsList className="grid w-full grid-cols-5">
                                         <TabsTrigger value="menus" className="flex items-center space-x-2">
                                             <UtensilsCrossed className="w-4 h-4" />
                                             <span>Menus Composés</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger value="items" className="flex items-center space-x-2">
+                                            <List className="w-4 h-4" />
+                                            <span>Menu Items</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger value="categories" className="flex items-center space-x-2">
+                                            <FolderOpen className="w-4 h-4" />
+                                            <span>Catégories</span>
                                         </TabsTrigger>
                                         <TabsTrigger value="zones" className="flex items-center space-x-2">
                                             <MapPin className="w-4 h-4" />
@@ -300,6 +310,12 @@ const DevPage: React.FC = () => {
                                     </TabsList>
                                     <TabsContent value="menus" className="mt-6">
                                         <ComposedMenuManager restaurantSlug={restaurantSlug} />
+                                    </TabsContent>
+                                    <TabsContent value="items" className="mt-6">
+                                        <MenuItemManager restaurantSlug={restaurantSlug} />
+                                    </TabsContent>
+                                    <TabsContent value="categories" className="mt-6">
+                                        <CategoryManager restaurantSlug={restaurantSlug} />
                                     </TabsContent>
                                     <TabsContent value="zones" className="mt-6">
                                         <ZoneManager restaurantSlug={restaurantSlug} />
