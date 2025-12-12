@@ -9,6 +9,7 @@ interface Table {
     capacite: number;
     statut: 'LIBRE' | 'OCCUPEE';
     active: boolean;
+    order: number;
 }
 
 export const useTables = (restaurantSlug: string, zoneId: string) => {

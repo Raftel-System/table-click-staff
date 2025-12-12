@@ -56,9 +56,12 @@ const ZoneDetail = () => {
 
     const renderContent = () => {
         if (currentZone.serviceType === 'DINING') {
+            // Trier les tables par ordre
+            const sortedTables = [...tables].sort((a, b) => (a.order || 0) - (b.order || 0));
+
             // Zone avec tables
-            const tablesLibres = tables.filter(t => t.statut === 'LIBRE');
-            const tablesOccupees = tables.filter(t => t.statut === 'OCCUPEE');
+            const tablesLibres = sortedTables.filter(t => t.statut === 'LIBRE');
+            const tablesOccupees = sortedTables.filter(t => t.statut === 'OCCUPEE');
 
             return (
                 <>
@@ -66,7 +69,7 @@ const ZoneDetail = () => {
                         <div>
                             <h1 className="text-3xl font-bold theme-gradient-text mb-2">{currentZone.nom}</h1>
                             <p className="theme-secondary-text">
-                                {tables.length} tables ({tablesOccupees.length} occupées • {tablesLibres.length} libres)
+                                {sortedTables.length} tables ({tablesOccupees.length} occupées • {tablesLibres.length} libres)
                             </p>
                         </div>
                         <button
@@ -80,7 +83,7 @@ const ZoneDetail = () => {
 
                     {/* Grid des tables */}
                     <div className="flex flex-wrap gap-2">
-                        {tables.map((table) => (
+                        {sortedTables.map((table) => (
                             <TableCard key={table.id} table={table} restaurantSlug={restaurantSlug || ''} />
                         ))}
                     </div>
@@ -89,7 +92,7 @@ const ZoneDetail = () => {
         } else {
 
             const enCours = takeAwayOrders.filter(o => ['IN_PROGRESS', 'preparing', 'pending', 'sent']
-                    .includes(o.status || '')).length;
+                .includes(o.status || '')).length;
             const pretes = takeAwayOrders.filter(o => ['READY', 'ready', 'served']
                 .includes(o.status || '')).length;
 
