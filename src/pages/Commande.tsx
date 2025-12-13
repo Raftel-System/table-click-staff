@@ -13,9 +13,9 @@ import {useZones} from '@/hooks/useZones';
 import type {MenuItem} from '@/types';
 import {MenuStepOptionsPanel} from '@/components/ui/MenuStepOptionsPanel';
 
-// Types pour la gestion des menus composés
+// 🆕 Types modifiés pour supporter les quantités d'options
 interface MenuStepSelections {
-  [stepId: string]: string[]; // Array d'IDs des options sélectionnées
+  [stepId: string]: { [optionId: string]: number }; // optionId -> quantité
 }
 
 // Composant Modal de confirmation
@@ -103,6 +103,9 @@ const Commande = () => {
   const [currentMenu, setCurrentMenu] = useState<MenuItem | null>(null);
   const [menuStepSelections, setMenuStepSelections] = useState<MenuStepSelections>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // 🆕 État pour l'option actuellement sélectionnée dans une étape
+  const [selectedStepOption, setSelectedStepOption] = useState<string | null>(null);
 
   const [editingItem, setEditingItem] = useState<{
     id: string;
@@ -205,20 +208,26 @@ const Commande = () => {
     return currentMenu.composedMenuConfig.steps.find(step => step.id === activeMenuStep) || null;
   }, [currentMenu, activeMenuStep]);
 
-  const currentSelections = menuStepSelections[activeMenuStep] || [];
+  const currentSelections = menuStepSelections[activeMenuStep] || {};
+
+  // 🆕 Calculer le nombre total de sélections pour une étape
+  const getTotalSelectionsCount = (stepId: string) => {
+    const selections = menuStepSelections[stepId] || {};
+    return Object.values(selections).reduce((sum, qty) => sum + qty, 0);
+  };
 
   // Calculer le prix total du menu en cours de configuration
   const totalMenuPrice = useMemo(() => {
     if (!currentMenu?.composedMenuConfig) return 0;
 
     const basePrice = currentMenu.composedMenuConfig.basePrice;
-    const adjustments = Object.entries(menuStepSelections).reduce((total, [stepId, selectedIds]) => {
+    const adjustments = Object.entries(menuStepSelections).reduce((total, [stepId, selectedOptions]) => {
       const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
       if (!step) return total;
 
-      return total + selectedIds.reduce((stepTotal, optionId) => {
+      return total + Object.entries(selectedOptions).reduce((stepTotal, [optionId, quantity]) => {
         const option = step.options.find(o => o.id === optionId);
-        return stepTotal + (option?.priceAdjustment || 0);
+        return stepTotal + ((option?.priceAdjustment || 0) * quantity);
       }, 0);
     }, 0);
 
@@ -227,11 +236,21 @@ const Commande = () => {
 
   const currentAdjustment = useMemo(() => {
     if (!currentStep) return 0;
-    return currentSelections.reduce((total, optionId) => {
+    return Object.entries(currentSelections).reduce((total, [optionId, quantity]) => {
       const option = currentStep.options.find(o => o.id === optionId);
-      return total + (option?.priceAdjustment || 0);
+      return total + ((option?.priceAdjustment || 0) * quantity);
     }, 0);
   }, [currentStep, currentSelections]);
+
+  // 🆕 Obtenir l'option sélectionnée et sa quantité
+  const selectedOptionData = useMemo(() => {
+    if (!selectedStepOption || !currentStep) return null;
+
+    const option = currentStep.options.find(o => o.id === selectedStepOption);
+    const quantity = currentSelections[selectedStepOption] || 0;
+
+    return option ? { option, quantity } : null;
+  }, [selectedStepOption, currentStep, currentSelections]);
 
   // Fonctions pour gérer la sélection d'articles normaux
   const handleItemSelect = (item: MenuItem) => {
@@ -243,6 +262,7 @@ const Commande = () => {
       setCurrentMenu(item);
       setMenuStepSelections({});
       setCurrentStepIndex(0);
+      setSelectedStepOption(null);
 
       const firstStepId = item.composedMenuConfig.steps[0]?.id || '';
       setActiveMenuStep(firstStepId);
@@ -265,27 +285,55 @@ const Commande = () => {
     setCurrentStepIndex(stepIndex);
     setActiveMenuStep(stepId);
     setSelectedItem(null);
+    setSelectedStepOption(null);
   };
 
-  const handleToggleOption = (optionId: string) => {
-    setMenuStepSelections(prev => {
-      const currentSelections = prev[activeMenuStep] || [];
-      const isSelected = currentSelections.includes(optionId);
+  // 🆕 Fonction modifiée pour sélectionner une option (ne change plus la quantité ici)
+  const handleSelectOption = (optionId: string) => {
+    setSelectedStepOption(optionId);
 
-      if (isSelected) {
-        // Retirer la sélection
-        return {
-          ...prev,
-          [activeMenuStep]: currentSelections.filter(id => id !== optionId)
-        };
+    // Si l'option n'est pas encore dans les sélections, l'ajouter avec quantité 1
+    if (!currentSelections[optionId]) {
+      setMenuStepSelections(prev => ({
+        ...prev,
+        [activeMenuStep]: {
+          ...prev[activeMenuStep],
+          [optionId]: 1
+        }
+      }));
+    }
+  };
+
+  // 🆕 Nouvelle fonction pour ajuster la quantité d'une option
+  const handleAdjustOptionQuantity = (optionId: string, delta: number) => {
+    if (!currentStep) return;
+
+    const currentQty = currentSelections[optionId] || 0;
+    const newQty = Math.max(0, currentQty + delta);
+    const totalCount = getTotalSelectionsCount(activeMenuStep) - currentQty + newQty;
+
+    // Vérifier si on ne dépasse pas le max
+    if (newQty > currentQty && totalCount > currentStep.maxSelections) {
+      return;
+    }
+
+    setMenuStepSelections(prev => {
+      const newSelections = { ...prev[activeMenuStep] };
+
+      if (newQty === 0) {
+        delete newSelections[optionId];
+        // Si on supprime l'option sélectionnée, désélectionner
+        if (selectedStepOption === optionId) {
+          setSelectedStepOption(null);
+        }
       } else {
-        // Ajouter la sélection
-        const newSelections = [...currentSelections, optionId];
-        return {
-          ...prev,
-          [activeMenuStep]: newSelections
-        };
+        newSelections[optionId] = newQty;
       }
+
+      return {
+        ...prev,
+        [activeMenuStep]: newSelections
+      };
     });
   };
 
@@ -296,6 +344,7 @@ const Commande = () => {
       if (newStepId) {
         setCurrentStepIndex(newIndex);
         setActiveMenuStep(newStepId);
+        setSelectedStepOption(null);
       }
     }
   };
@@ -307,29 +356,9 @@ const Commande = () => {
       if (newStepId) {
         setCurrentStepIndex(newIndex);
         setActiveMenuStep(newStepId);
+        setSelectedStepOption(null);
       }
     }
-  };
-
-  const handleValidateMenu = () => {
-    if (!currentMenu) return;
-
-    // Créer menuConfig avec les NOMS au lieu des IDs
-    const menuConfigWithNames: { [stepId: string]: string[] } = {};
-
-    Object.entries(menuStepSelections).forEach(([stepId, selectedIds]) => {
-      const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
-      if (step) {
-        menuConfigWithNames[stepId] = selectedIds
-            .map(optionId => step.options.find(o => o.id === optionId)?.nom)
-            .filter(Boolean) as string[];
-      }
-    });
-
-    // Ajouter au panier - la quantité et la note seront gérées par l'AdjustmentPanel
-    // Cette fonction n'est appelée que par le bouton "Valider" de l'AdjustmentPanel
-    // qui a déjà la quantité et la note
-    handleReturnToCategories();
   };
 
   const handleReturnToCategories = () => {
@@ -339,18 +368,19 @@ const Commande = () => {
     setMenuStepSelections({});
     setCurrentStepIndex(0);
     setSelectedItem(null);
+    setSelectedStepOption(null);
   };
 
   // Validation pour les steps
   const canGoNext = currentStep ?
-      menuStepSelections[activeMenuStep]?.length >= currentStep.minSelections : false;
+      getTotalSelectionsCount(activeMenuStep) >= currentStep.minSelections : false;
 
   const canValidateMenu = useMemo(() => {
     if (!currentMenu?.composedMenuConfig?.steps) return false;
 
     return currentMenu.composedMenuConfig.steps.every(step => {
-      const selections = menuStepSelections[step.id] || [];
-      return selections.length >= step.minSelections && selections.length <= step.maxSelections;
+      const totalCount = getTotalSelectionsCount(step.id);
+      return totalCount >= step.minSelections && totalCount <= step.maxSelections;
     });
   }, [currentMenu, menuStepSelections]);
 
@@ -554,7 +584,8 @@ const Commande = () => {
               <MenuStepOptionsPanel
                   currentStep={currentStep}
                   selections={currentSelections}
-                  onToggleOption={handleToggleOption}
+                  onSelectOption={handleSelectOption}
+                  selectedOption={selectedStepOption}
                   basePrice={currentMenu?.composedMenuConfig?.basePrice || 0}
                   totalAdjustment={currentAdjustment}
               />
@@ -565,20 +596,28 @@ const Commande = () => {
               />
           )}
 
-          {/* 🆕 Ajustement Panel - Toujours affiché avec support des menus composés */}
+          {/* 🆕 Ajustement Panel avec support quantité d'options */}
           <AdjustmentPanel
               selectedItem={isMenuConfig && currentMenu ? { ...currentMenu, prix: totalMenuPrice } : selectedItem}
               onAddToCart={(item, quantity, note) => {
                 if (isMenuConfig && currentMenu) {
-                  // Menu composé : créer menuConfig et ajouter au panier
+                  // Menu composé : créer menuConfig avec noms et quantités
                   const menuConfigWithNames: { [stepId: string]: string[] } = {};
 
-                  Object.entries(menuStepSelections).forEach(([stepId, selectedIds]) => {
+                  Object.entries(menuStepSelections).forEach(([stepId, selectedOptions]) => {
                     const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
                     if (step) {
-                      menuConfigWithNames[stepId] = selectedIds
-                          .map(optionId => step.options.find(o => o.id === optionId)?.nom)
-                          .filter(Boolean) as string[];
+                      const optionsList: string[] = [];
+                      Object.entries(selectedOptions).forEach(([optionId, qty]) => {
+                        const option = step.options.find(o => o.id === optionId);
+                        if (option) {
+                          // Répéter le nom de l'option selon la quantité
+                          for (let i = 0; i < qty; i++) {
+                            optionsList.push(option.nom);
+                          }
+                        }
+                      });
+                      menuConfigWithNames[stepId] = optionsList;
                     }
                   });
 
@@ -604,9 +643,12 @@ const Commande = () => {
               totalSteps={currentMenu?.composedMenuConfig?.steps.length || 0}
               onPreviousStep={handlePreviousStep}
               onNextStep={handleNextStep}
-              onValidateMenu={handleValidateMenu}
               canGoNext={canGoNext}
               canValidate={canValidateMenu}
+              // 🆕 Nouvelles props pour la gestion des options
+              selectedStepOption={selectedOptionData}
+              onAdjustOptionQuantity={handleAdjustOptionQuantity}
+              currentStepMaxSelections={currentStep?.maxSelections}
           />
 
           {/* Panier */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Minus, StickyNote, X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
-import type {MenuItem} from '../types';
+import type {MenuItem} from '@/types';
 
 interface AdjustmentPanelProps {
   selectedItem: MenuItem | null;
@@ -16,7 +16,7 @@ interface AdjustmentPanelProps {
   onUpdateItem?: (id: string, quantity: number, note: string) => void;
   onCancelItem?: (id: string) => void;
 
-  // 🆕 Props pour les menus composés
+  // Props pour les menus composés
   isMenuConfig?: boolean;
   currentStepIndex?: number;
   totalSteps?: number;
@@ -25,6 +25,18 @@ interface AdjustmentPanelProps {
   onValidateMenu?: () => void;
   canGoNext?: boolean;
   canValidate?: boolean;
+
+  // 🆕 Props pour la gestion des quantités d'options
+  selectedStepOption?: {
+    option: {
+      id: string;
+      nom: string;
+      priceAdjustment: number;
+    };
+    quantity: number;
+  } | null;
+  onAdjustOptionQuantity?: (optionId: string, delta: number) => void;
+  currentStepMaxSelections?: number;
 }
 
 interface ConfirmationModalProps {
@@ -137,9 +149,11 @@ export const AdjustmentPanel = ({
                                   totalSteps = 0,
                                   onPreviousStep,
                                   onNextStep,
-                                  onValidateMenu,
                                   canGoNext = false,
-                                  canValidate = false
+                                  canValidate = false,
+                                  selectedStepOption,
+                                  onAdjustOptionQuantity,
+                                  currentStepMaxSelections
                                 }: AdjustmentPanelProps) => {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
@@ -158,6 +172,12 @@ export const AdjustmentPanel = ({
   const isEditing = !!editingItem;
   const isSentItem = editingItem?.isSent || false;
   const isLastStep = isMenuConfig && currentStepIndex === totalSteps - 1;
+
+  // 🆕 Déterminer si on doit afficher l'ajusteur d'option
+  const showOptionAdjuster = isMenuConfig &&
+      selectedStepOption &&
+      currentStepMaxSelections &&
+      currentStepMaxSelections > 1;
 
   // Afficher les contrôles de quantité et note seulement :
   // - En mode normal (pas de menu)
@@ -182,13 +202,9 @@ export const AdjustmentPanel = ({
 
   const handleAddToCart = () => {
     if (isEditing && editingItem && onUpdateItem) {
-      if (isSentItem) {
-        setConfirmationModal({ isOpen: true, action: 'modify' });
-      } else {
-        onUpdateItem(editingItem.id, quantity, note);
-        setQuantity(1);
-        setNote('');
-      }
+      onUpdateItem(editingItem.id, quantity, note);
+      setQuantity(1);
+      setNote('');
     } else if (selectedItem) {
       onAddToCart(selectedItem, quantity, note);
       setQuantity(1);
@@ -250,7 +266,7 @@ export const AdjustmentPanel = ({
 
   return (
       <>
-        <div className="w-28 theme-header-bg p-4 flex flex-col gap-4">
+        <div className="w-28 theme-header-bg p-4 flex flex-col gap-3">
           {/* Titre section */}
           <div className="text-center">
             <div className="theme-foreground-text text-xs font-bold mb-2">
@@ -262,7 +278,7 @@ export const AdjustmentPanel = ({
                   Envoyé
                 </div>
             )}
-            {/* 🆕 Indicateur d'étape pour les menus composés */}
+            {/* Indicateur d'étape pour les menus composés */}
             {isMenuConfig && totalSteps > 0 && (
                 <div className="text-xs theme-secondary-text mb-2">
                   Étape {currentStepIndex + 1}/{totalSteps}
@@ -280,47 +296,89 @@ export const AdjustmentPanel = ({
             </div>
           </div>
 
-          {/* Contrôles quantité - Affichés seulement en mode normal ou dernière étape */}
-          {showQuantityAndNote && (
-              <div className="flex flex-col items-center gap-2">
-                <button
-                    onClick={() => handleQuantityChange(1)}
-                    className="theme-button-primary w-8 h-8 rounded-full flex items-center justify-center"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-
-                <div className="theme-foreground-text font-bold text-lg">
-                  {quantity}
+          {/* 🆕 Ajusteur de quantité d'OPTION (seulement si option sélectionnée avec maxSelections > 1) */}
+          {showOptionAdjuster && selectedStepOption && onAdjustOptionQuantity && (
+              <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-2">
+                <div className="text-center text-xs font-semibold text-blue-800 mb-2">
+                  Qté Option
                 </div>
+                <div className="text-center text-xs text-blue-700 mb-2 line-clamp-2">
+                  {selectedStepOption.option.nom}
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                      onClick={() => onAdjustOptionQuantity(selectedStepOption.option.id, 1)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
 
-                <button
-                    onClick={() => handleQuantityChange(-1)}
-                    className="theme-button-secondary w-8 h-8 rounded-full flex items-center justify-center"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
+                  <div className="text-blue-800 font-bold text-base">
+                    {selectedStepOption.quantity}
+                  </div>
+
+                  <button
+                      onClick={() => onAdjustOptionQuantity(selectedStepOption.option.id, -1)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                </div>
+                {selectedStepOption.option.priceAdjustment !== 0 && (
+                    <div className="text-center text-xs text-blue-700 mt-2">
+                      {selectedStepOption.option.priceAdjustment > 0 ? '+' : ''}
+                      {selectedStepOption.option.priceAdjustment.toFixed(2)}€/unité
+                    </div>
+                )}
               </div>
           )}
 
-          {/* Note - Affichée seulement en mode normal ou dernière étape */}
+          {/* Contrôles quantité MENU - Affichés seulement en mode normal ou dernière étape */}
           {showQuantityAndNote && (
-              <button
-                  onClick={handleNoteClick}
-                  className={`theme-category-button p-2 rounded-lg flex items-center justify-center relative ${note ? 'bg-blue-100 border-blue-300' : ''}`}
-              >
-                <StickyNote className={`w-4 h-4 ${note ? 'text-blue-600' : ''}`} />
-                {note && (
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                )}
-              </button>
+              <>
+                <div className="border-t border-gray-300 pt-2">
+                  <div className="text-center text-xs font-semibold theme-secondary-text mb-2">
+                    Qté Menu
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                        onClick={() => handleQuantityChange(1)}
+                        className="theme-button-primary w-8 h-8 rounded-full flex items-center justify-center"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+
+                    <div className="theme-foreground-text font-bold text-lg">
+                      {quantity}
+                    </div>
+
+                    <button
+                        onClick={() => handleQuantityChange(-1)}
+                        className="theme-button-secondary w-8 h-8 rounded-full flex items-center justify-center"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Note */}
+                <button
+                    onClick={handleNoteClick}
+                    className={`theme-category-button p-2 rounded-lg flex items-center justify-center relative ${note ? 'bg-blue-100 border-blue-300' : ''}`}
+                >
+                  <StickyNote className={`w-4 h-4 ${note ? 'text-blue-600' : ''}`} />
+                  {note && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  )}
+                </button>
+              </>
           )}
 
-          {/* 🆕 Navigation et validation pour les menus composés */}
+          {/* Navigation et validation pour les menus composés */}
           {isMenuConfig ? (
               <>
                 {/* Navigation entre étapes */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 border-t border-gray-300 pt-2">
                   <button
                       onClick={onPreviousStep}
                       disabled={currentStepIndex === 0}
@@ -371,13 +429,9 @@ export const AdjustmentPanel = ({
                     <>
                       <button
                           onClick={handleAddToCart}
-                          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                              isSentItem
-                                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                                  : 'theme-button-primary'
-                          }`}
+                          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors theme-button-primary'`}
                       >
-                        {isSentItem ? 'Modifier*' : 'Modifier'}
+                        Modifier
                       </button>
 
                       <button
