@@ -416,7 +416,7 @@ const Commande = () => {
     };
   };
 
-  // 🆕 Fonction pour sauvegarder la commande terminée dans Firestore
+  // 🆕 FONCTION CORRIGÉE : Sauvegarder la commande terminée dans Firestore
   const saveCompletedOrderToFirestore = async () => {
     if (!currentOrder || !restaurantSlug) {
       console.error('❌ Informations manquantes pour sauvegarder la commande');
@@ -427,8 +427,10 @@ const Commande = () => {
       const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
 
-      // Calculer le prix total de la commande
+      // 🆕 CORRECTION 1: Calculer le prix total en EXCLUANT les articles supprimés
       const totalPrice = currentOrder.items.reduce((sum, item) => {
+        // Ignorer les articles avec status 'deleted'
+        if (item.status === 'deleted') return sum;
         return sum + (item.prix * item.quantite);
       }, 0);
 
@@ -451,17 +453,19 @@ const Commande = () => {
         tableName: headerInfo.table || null,
         serviceType: serviceType,
 
-        // Articles de la commande
+        // 🆕 CORRECTION 2: Inclure le champ status dans chaque item
         items: currentOrder.items.map(item => ({
           nom: item.nom,
           prix: item.prix,
           quantite: item.quantite,
           note: item.note || '',
-          menuConfig: item.menuConfig || null
+          menuConfig: item.menuConfig || null,
+          status: item.status || 'served', // ✅ Ajouter le status (served ou deleted)
+          deletedAt: item.deletedAt || null // ✅ Timestamp de suppression si applicable
         })),
 
         // Prix et statut
-        totalPrice: totalPrice,
+        totalPrice: totalPrice, // ✅ Total corrigé (sans les articles deleted)
         status: 'served',
 
         // Métadonnées de période
@@ -479,6 +483,7 @@ const Commande = () => {
       const docRef = await addDoc(ordersRef, completedOrderData);
 
       console.log(`✅ Commande sauvegardée dans Firestore: /restaurants/${restaurantSlug}/orders/${year}/${month}/${docRef.id}`);
+      console.log(`💰 Total price (sans articles supprimés): ${totalPrice.toFixed(2)}€`);
       return true;
     } catch (error) {
       console.error('❌ Erreur lors de la sauvegarde dans Firestore:', error);

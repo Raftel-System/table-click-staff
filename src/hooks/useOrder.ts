@@ -88,6 +88,7 @@ export const useOrder = (
         };
     }, [restaurantSlug, tableId, serviceType, zoneId]);
 
+    // 🆕 FONCTION MODIFIÉE: Recalcule le total lors de la suppression
     const deleteOrderItem = async (itemIndex: number) => {
         if (!restaurantSlug || !currentOrder) return false;
 
@@ -108,9 +109,13 @@ export const useOrder = (
                 return false;
             }
 
+            // 🆕 Récupérer l'article à supprimer pour calculer son prix
+            const itemToDelete = currentData.items[itemIndex];
+            const itemPrice = itemToDelete.prix * itemToDelete.quantite;
+
             // Créer l'article supprimé
             const deletedItem = {
-                ...currentData.items[itemIndex],
+                ...itemToDelete,
                 status: 'deleted',
                 deletedAt: Date.now() // timestamp UNIX pour RTDB
             };
@@ -119,12 +124,20 @@ export const useOrder = (
             const updatedItems = [...currentData.items];
             updatedItems[itemIndex] = deletedItem;
 
-            // Mise à jour dans RTDB
+            // 🆕 Recalculer le total en excluant tous les articles supprimés
+            const newTotal = updatedItems.reduce((sum, item) => {
+                if (item.status === 'deleted') return sum;
+                return sum + (item.prix * item.quantite);
+            }, 0);
+
+            // 🆕 Mise à jour dans RTDB avec le nouveau total
             await update(orderRef, {
                 items: updatedItems,
+                total: newTotal,
                 updatedAt: Date.now()
             });
 
+            console.log(`✅ Article supprimé. Prix de l'article: ${itemPrice.toFixed(2)}€, Nouveau total: ${newTotal.toFixed(2)}€`);
             return true;
         } catch (err) {
             console.error('❌ Erreur suppression article dans RTDB:', err);
