@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import {AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight} from 'lucide-react';
+import {AlertTriangle, ArrowLeft} from 'lucide-react';
 import {CategoryNav} from '../components/CategoryNav';
 import {ArticleGrid} from '../components/ArticleGrid';
 import {AdjustmentPanel} from '../components/AdjustmentPanel';
@@ -75,77 +75,13 @@ const TerminateOrderModal = ({
   );
 };
 
-// Composant de navigation entre steps
-const StepNavigation = ({ 
-  currentStepIndex, 
-  totalSteps, 
-  onPreviousStep, 
-  onNextStep, 
-  onValidateMenu,
-  canGoNext,
-  canValidate 
-}: {
-  currentStepIndex: number;
-  totalSteps: number;
-  onPreviousStep: () => void;
-  onNextStep: () => void;
-  onValidateMenu: () => void;
-  canGoNext: boolean;
-  canValidate: boolean;
-}) => {
-  const isLastStep = currentStepIndex === totalSteps - 1;
-  
-  return (
-    <div className="w-40 theme-header-bg p-3 flex flex-col gap-2">
-      <div className="text-xs theme-secondary-text text-center mb-2">
-        Étape {currentStepIndex + 1} sur {totalSteps}
-      </div>
-      
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={onPreviousStep}
-          disabled={currentStepIndex === 0}
-          className={`theme-button-secondary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
-            currentStepIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          <ChevronLeft className="w-3 h-3" />
-          Précédent
-        </button>
-
-        {!isLastStep ? (
-          <button
-            onClick={onNextStep}
-            disabled={!canGoNext}
-            className={`theme-button-primary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
-              !canGoNext ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Suivant
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        ) : (
-          <button
-            onClick={onValidateMenu}
-            disabled={!canValidate}
-            className={`bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              !canValidate ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Valider le menu
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const Commande = () => {
   const { restaurantSlug, zoneId, tableId } = useParams<{
     restaurantSlug: string;
     zoneId: string;
     tableId: string;
-  }>();  const navigate = useNavigate();
+  }>();
+  const navigate = useNavigate();
   const { addItem, updateItem, removeItem, items, validateOrder, clearCart } = useCartStore();
 
   // Firebase hooks
@@ -160,14 +96,14 @@ const Commande = () => {
   // États pour la gestion normale
   const [activeCategory, setActiveCategory] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  
+
   // États pour la gestion des menus composés
   const [isMenuConfig, setIsMenuConfig] = useState(false);
   const [activeMenuStep, setActiveMenuStep] = useState<string>('');
   const [currentMenu, setCurrentMenu] = useState<MenuItem | null>(null);
   const [menuStepSelections, setMenuStepSelections] = useState<MenuStepSelections>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  
+
   const [editingItem, setEditingItem] = useState<{
     id: string;
     nom: string;
@@ -274,18 +210,18 @@ const Commande = () => {
   // Calculer le prix total du menu en cours de configuration
   const totalMenuPrice = useMemo(() => {
     if (!currentMenu?.composedMenuConfig) return 0;
-    
+
     const basePrice = currentMenu.composedMenuConfig.basePrice;
     const adjustments = Object.entries(menuStepSelections).reduce((total, [stepId, selectedIds]) => {
       const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
       if (!step) return total;
-      
+
       return total + selectedIds.reduce((stepTotal, optionId) => {
         const option = step.options.find(o => o.id === optionId);
         return stepTotal + (option?.priceAdjustment || 0);
       }, 0);
     }, 0);
-    
+
     return basePrice + adjustments;
   }, [currentMenu, menuStepSelections]);
 
@@ -299,12 +235,11 @@ const Commande = () => {
 
   // Fonctions pour gérer la sélection d'articles normaux
   const handleItemSelect = (item: MenuItem) => {
-
     setEditingItem(null);
     setSelectedItem(item);
 
     if (item.isComposedMenu && item.composedMenuConfig) {
-     setIsMenuConfig(true);
+      setIsMenuConfig(true);
       setCurrentMenu(item);
       setMenuStepSelections({});
       setCurrentStepIndex(0);
@@ -336,7 +271,7 @@ const Commande = () => {
     setMenuStepSelections(prev => {
       const currentSelections = prev[activeMenuStep] || [];
       const isSelected = currentSelections.includes(optionId);
-      
+
       if (isSelected) {
         // Retirer la sélection
         return {
@@ -391,16 +326,9 @@ const Commande = () => {
       }
     });
 
-    // Ajouter au panier
-    addItem({
-      nom: currentMenu.nom,  // ✅ Juste le nom, sans parenthèses ni description
-      prix: totalMenuPrice,
-      quantite: 1,
-      note: '',
-      menuConfig: menuConfigWithNames  // ✅ Avec les noms, pas les IDs
-    });
-
-    // Réinitialiser le mode menu
+    // Ajouter au panier - la quantité et la note seront gérées par l'AdjustmentPanel
+    // Cette fonction n'est appelée que par le bouton "Valider" de l'AdjustmentPanel
+    // qui a déjà la quantité et la note
     handleReturnToCategories();
   };
 
@@ -414,12 +342,12 @@ const Commande = () => {
   };
 
   // Validation pour les steps
-  const canGoNext = currentStep ? 
-    menuStepSelections[activeMenuStep]?.length >= currentStep.minSelections : false;
+  const canGoNext = currentStep ?
+      menuStepSelections[activeMenuStep]?.length >= currentStep.minSelections : false;
 
   const canValidateMenu = useMemo(() => {
     if (!currentMenu?.composedMenuConfig?.steps) return false;
-    
+
     return currentMenu.composedMenuConfig.steps.every(step => {
       const selections = menuStepSelections[step.id] || [];
       return selections.length >= step.minSelections && selections.length <= step.maxSelections;
@@ -428,10 +356,8 @@ const Commande = () => {
 
   // Autres fonctions (inchangées)
   const handleSendItems = async () => {
-    // ✅ Vérifier que la commande est initialisée
     if (!currentOrder) {
       console.error('❌ Commande non initialisée, tentative de réinitialisation...');
-      // Optionnel : déclencher une réinitialisation
       return;
     }
 
@@ -505,12 +431,8 @@ const Commande = () => {
 
   const handleCancelEditingItem = async (id: string) => {
     if (id.includes('-') && currentOrder && id.startsWith(currentOrder.id)) {
-      // Extraire l'index de l'article depuis l'ID (format: orderId-index)
       const itemIndex = parseInt(id.split('-').pop() || '0');
-
-      // Appeler la fonction de suppression
       const success = await deleteOrderItem(itemIndex);
-
       if (success) {
         console.log('✅ Article supprimé avec succès');
       }
@@ -523,7 +445,6 @@ const Commande = () => {
   const getRetourPath = () => `/${restaurantSlug}/zones`;
 
   const getHeaderInfo = () => {
-
     const currentZone = zones.find(zone => zone.id === zoneId);
     if (!currentZone) {
       return {
@@ -543,8 +464,6 @@ const Commande = () => {
       };
     }
 
-
-    // Pour les tables normales
     const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
     const tableNum = tableInfo?.table?.numero || 'inconnue';
     const tableInfoStr = `Table ${tableNum}`;
@@ -592,7 +511,7 @@ const Commande = () => {
                   </>
               )}
               <span>•</span>
-              <span>{headerInfo.numero}</span> {/* Supprimé "Commande" */}
+              <span>{headerInfo.numero}</span>
             </div>
           </div>
 
@@ -632,43 +551,63 @@ const Commande = () => {
 
           {/* Panel central - Articles normaux OU options de menu */}
           {isMenuConfig ? (
-            <MenuStepOptionsPanel
-              currentStep={currentStep}
-              selections={currentSelections}
-              onToggleOption={handleToggleOption}
-              basePrice={currentMenu?.composedMenuConfig?.basePrice || 0}
-              totalAdjustment={currentAdjustment}
-            />
+              <MenuStepOptionsPanel
+                  currentStep={currentStep}
+                  selections={currentSelections}
+                  onToggleOption={handleToggleOption}
+                  basePrice={currentMenu?.composedMenuConfig?.basePrice || 0}
+                  totalAdjustment={currentAdjustment}
+              />
           ) : (
-            <ArticleGrid
-              items={filteredItems}
-              onItemSelect={handleItemSelect}
-            />
+              <ArticleGrid
+                  items={filteredItems}
+                  onItemSelect={handleItemSelect}
+              />
           )}
 
-          {/* Navigation des steps (seulement en mode menu) */}
-          {isMenuConfig && currentMenu?.composedMenuConfig?.steps && (
-            <StepNavigation
+          {/* 🆕 Ajustement Panel - Toujours affiché avec support des menus composés */}
+          <AdjustmentPanel
+              selectedItem={isMenuConfig && currentMenu ? { ...currentMenu, prix: totalMenuPrice } : selectedItem}
+              onAddToCart={(item, quantity, note) => {
+                if (isMenuConfig && currentMenu) {
+                  // Menu composé : créer menuConfig et ajouter au panier
+                  const menuConfigWithNames: { [stepId: string]: string[] } = {};
+
+                  Object.entries(menuStepSelections).forEach(([stepId, selectedIds]) => {
+                    const step = currentMenu.composedMenuConfig?.steps.find(s => s.id === stepId);
+                    if (step) {
+                      menuConfigWithNames[stepId] = selectedIds
+                          .map(optionId => step.options.find(o => o.id === optionId)?.nom)
+                          .filter(Boolean) as string[];
+                    }
+                  });
+
+                  addItem({
+                    nom: currentMenu.nom,
+                    prix: totalMenuPrice,
+                    quantite: quantity,
+                    note: note,
+                    menuConfig: menuConfigWithNames
+                  });
+
+                  handleReturnToCategories();
+                } else {
+                  // Article normal
+                  handleAddToCart(item, quantity, note);
+                }
+              }}
+              editingItem={editingItem}
+              onUpdateItem={handleUpdateItem}
+              onCancelItem={handleCancelEditingItem}
+              isMenuConfig={isMenuConfig}
               currentStepIndex={currentStepIndex}
-              totalSteps={currentMenu.composedMenuConfig.steps.length}
+              totalSteps={currentMenu?.composedMenuConfig?.steps.length || 0}
               onPreviousStep={handlePreviousStep}
               onNextStep={handleNextStep}
               onValidateMenu={handleValidateMenu}
               canGoNext={canGoNext}
               canValidate={canValidateMenu}
-            />
-          )}
-
-          {/* Ajustement (seulement si pas en mode menu) */}
-          {!isMenuConfig && (
-            <AdjustmentPanel
-                selectedItem={selectedItem}
-                onAddToCart={handleAddToCart}
-                editingItem={editingItem}
-                onUpdateItem={handleUpdateItem}
-                onCancelItem={handleCancelEditingItem}
-            />
-          )}
+          />
 
           {/* Panier */}
           <CartList

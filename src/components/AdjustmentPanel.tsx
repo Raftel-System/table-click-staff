@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Minus, StickyNote, X, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, StickyNote, X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import type {MenuItem} from '../types';
 
 interface AdjustmentPanelProps {
@@ -11,10 +11,20 @@ interface AdjustmentPanelProps {
     prix: number;
     quantite: number;
     note?: string;
-    isSent?: boolean; // 🆕 Indique si l'article est déjà envoyé
+    isSent?: boolean;
   } | null;
   onUpdateItem?: (id: string, quantity: number, note: string) => void;
   onCancelItem?: (id: string) => void;
+
+  // 🆕 Props pour les menus composés
+  isMenuConfig?: boolean;
+  currentStepIndex?: number;
+  totalSteps?: number;
+  onPreviousStep?: () => void;
+  onNextStep?: () => void;
+  onValidateMenu?: () => void;
+  canGoNext?: boolean;
+  canValidate?: boolean;
 }
 
 interface ConfirmationModalProps {
@@ -44,7 +54,6 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, itemName, action }: Con
 
   const handleConfirm = () => {
     if (action === 'delete') {
-      // Vérifier le code PIN pour la suppression
       if (pinCode !== '0000') {
         setPinError(true);
         return;
@@ -122,7 +131,15 @@ export const AdjustmentPanel = ({
                                   onAddToCart,
                                   editingItem,
                                   onUpdateItem,
-                                  onCancelItem
+                                  onCancelItem,
+                                  isMenuConfig = false,
+                                  currentStepIndex = 0,
+                                  totalSteps = 0,
+                                  onPreviousStep,
+                                  onNextStep,
+                                  onValidateMenu,
+                                  canGoNext = false,
+                                  canValidate = false
                                 }: AdjustmentPanelProps) => {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
@@ -140,6 +157,12 @@ export const AdjustmentPanel = ({
   const currentItem = editingItem || selectedItem;
   const isEditing = !!editingItem;
   const isSentItem = editingItem?.isSent || false;
+  const isLastStep = isMenuConfig && currentStepIndex === totalSteps - 1;
+
+  // Afficher les contrôles de quantité et note seulement :
+  // - En mode normal (pas de menu)
+  // - OU en mode menu ET dernière étape
+  const showQuantityAndNote = !isMenuConfig || isLastStep;
 
   // Mettre à jour les valeurs quand on change d'item
   useEffect(() => {
@@ -160,10 +183,8 @@ export const AdjustmentPanel = ({
   const handleAddToCart = () => {
     if (isEditing && editingItem && onUpdateItem) {
       if (isSentItem) {
-        // Article envoyé - demander confirmation
         setConfirmationModal({ isOpen: true, action: 'modify' });
       } else {
-        // Article en attente - modification directe
         onUpdateItem(editingItem.id, quantity, note);
         setQuantity(1);
         setNote('');
@@ -178,10 +199,8 @@ export const AdjustmentPanel = ({
   const handleCancelItem = () => {
     if (isEditing && editingItem && onCancelItem) {
       if (isSentItem) {
-        // Article envoyé - demander confirmation
         setConfirmationModal({ isOpen: true, action: 'delete' });
       } else {
-        // Article en attente - suppression directe
         onCancelItem(editingItem.id);
       }
     }
@@ -237,10 +256,16 @@ export const AdjustmentPanel = ({
             <div className="theme-foreground-text text-xs font-bold mb-2">
               Ajust.
             </div>
-            {/* 🆕 Indicateur si article envoyé */}
+            {/* Indicateur si article envoyé */}
             {isSentItem && (
                 <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mb-2">
                   Envoyé
+                </div>
+            )}
+            {/* 🆕 Indicateur d'étape pour les menus composés */}
+            {isMenuConfig && totalSteps > 0 && (
+                <div className="text-xs theme-secondary-text mb-2">
+                  Étape {currentStepIndex + 1}/{totalSteps}
                 </div>
             )}
           </div>
@@ -255,76 +280,128 @@ export const AdjustmentPanel = ({
             </div>
           </div>
 
-          {/* Contrôles quantité */}
-          <div className="flex flex-col items-center gap-2">
-            <button
-                onClick={() => handleQuantityChange(1)}
-                className="theme-button-primary w-8 h-8 rounded-full flex items-center justify-center"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-
-            <div className="theme-foreground-text font-bold text-lg">
-              {quantity}
-            </div>
-
-            <button
-                onClick={() => handleQuantityChange(-1)}
-                className="theme-button-secondary w-8 h-8 rounded-full flex items-center justify-center"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Note */}
-          <button
-              onClick={handleNoteClick}
-              className={`theme-category-button p-2 rounded-lg flex items-center justify-center relative ${note ? 'bg-blue-100 border-blue-300' : ''}`}
-          >
-            <StickyNote className={`w-4 h-4 ${note ? 'text-blue-600' : ''}`} />
-            {note && (
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-            )}
-          </button>
-
-          {/* 🆕 Boutons d'action selon le contexte */}
-          {isEditing ? (
-              <>
-                {/* Mode édition - Modifier */}
+          {/* Contrôles quantité - Affichés seulement en mode normal ou dernière étape */}
+          {showQuantityAndNote && (
+              <div className="flex flex-col items-center gap-2">
                 <button
-                    onClick={handleAddToCart}
-                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                        isSentItem
-                            ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                            : 'theme-button-primary'
-                    }`}
+                    onClick={() => handleQuantityChange(1)}
+                    className="theme-button-primary w-8 h-8 rounded-full flex items-center justify-center"
                 >
-                  {isSentItem ? 'Modifier*' : 'Modifier'}
+                  <Plus className="w-4 h-4" />
                 </button>
 
-                {/* Mode édition - Supprimer */}
-                <button
-                    onClick={handleCancelItem}
-                    className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
-                >
-                  {isSentItem ? 'Supprimer*' : 'Supprimer'}
-                </button>
+                <div className="theme-foreground-text font-bold text-lg">
+                  {quantity}
+                </div>
 
-                {/* 🆕 Note explicative pour articles envoyés */}
-                {isSentItem && (
-                    <div className="text-xs theme-secondary-text text-center mt-2 leading-tight">
-                      * Article déjà envoyé en cuisine
-                    </div>
+                <button
+                    onClick={() => handleQuantityChange(-1)}
+                    className="theme-button-secondary w-8 h-8 rounded-full flex items-center justify-center"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+              </div>
+          )}
+
+          {/* Note - Affichée seulement en mode normal ou dernière étape */}
+          {showQuantityAndNote && (
+              <button
+                  onClick={handleNoteClick}
+                  className={`theme-category-button p-2 rounded-lg flex items-center justify-center relative ${note ? 'bg-blue-100 border-blue-300' : ''}`}
+              >
+                <StickyNote className={`w-4 h-4 ${note ? 'text-blue-600' : ''}`} />
+                {note && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
                 )}
+              </button>
+          )}
+
+          {/* 🆕 Navigation et validation pour les menus composés */}
+          {isMenuConfig ? (
+              <>
+                {/* Navigation entre étapes */}
+                <div className="flex flex-col gap-2">
+                  <button
+                      onClick={onPreviousStep}
+                      disabled={currentStepIndex === 0}
+                      className={`theme-button-secondary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
+                          currentStepIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    Préc.
+                  </button>
+
+                  {!isLastStep ? (
+                      <button
+                          onClick={onNextStep}
+                          disabled={!canGoNext}
+                          className={`theme-button-primary px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 ${
+                              !canGoNext ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                      >
+                        Suiv.
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                  ) : (
+                      <button
+                          onClick={() => {
+                            // À la dernière étape, on appelle onAddToCart avec quantité et note
+                            if (selectedItem) {
+                              onAddToCart(selectedItem, quantity, note);
+                              // Réinitialiser après validation
+                              setQuantity(1);
+                              setNote('');
+                            }
+                          }}
+                          disabled={!canValidate}
+                          className={`bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                              !canValidate ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                      >
+                        Valider
+                      </button>
+                  )}
+                </div>
               </>
           ) : (
-              /* Mode normal - Ajouter */
-              <button
-                  onClick={handleAddToCart}
-                  className="theme-button-primary py-2 px-3 rounded-lg text-xs font-semibold"
-              >
-                Ajouter
-              </button>
+              <>
+                {/* Boutons d'action normaux (mode non-menu) */}
+                {isEditing ? (
+                    <>
+                      <button
+                          onClick={handleAddToCart}
+                          className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                              isSentItem
+                                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                  : 'theme-button-primary'
+                          }`}
+                      >
+                        {isSentItem ? 'Modifier*' : 'Modifier'}
+                      </button>
+
+                      <button
+                          onClick={handleCancelItem}
+                          className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        {isSentItem ? 'Supprimer*' : 'Supprimer'}
+                      </button>
+
+                      {isSentItem && (
+                          <div className="text-xs theme-secondary-text text-center mt-2 leading-tight">
+                            * Article déjà envoyé en cuisine
+                          </div>
+                      )}
+                    </>
+                ) : (
+                    <button
+                        onClick={handleAddToCart}
+                        className="theme-button-primary py-2 px-3 rounded-lg text-xs font-semibold"
+                    >
+                      Ajouter
+                    </button>
+                )}
+              </>
           )}
         </div>
 
