@@ -166,7 +166,6 @@ const Commande = () => {
     currentOrder,
     currentOrderNumber,
     addItemsToCurrentOrder,
-    updateOrderStatus,
     clearCurrentSession,
     deleteOrderItem,
     isLoadingOrder,
@@ -384,6 +383,99 @@ const Commande = () => {
     });
   }, [currentMenu, menuStepSelections]);
 
+  const getHeaderInfo = () => {
+    const currentZone = zones.find(zone => zone.id === zoneId);
+    if (!currentZone) {
+      return {
+        zone: 'Zone inconnue',
+        table: null,
+        numero: currentOrderNumber,
+        fullInfo: 'Zone inconnue',
+      };
+    }
+
+    if (currentZone.serviceType === 'TAKEAWAY') {
+      return {
+        zone: currentZone?.nom,
+        table: null,
+        numero: currentOrderNumber,
+        fullInfo: `${currentZone?.nom}`,
+      };
+    }
+
+    const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
+    const tableNum = tableInfo?.table?.numero || 'inconnue';
+    const tableInfoStr = `Table ${tableNum}`;
+
+    return {
+      zone: zoneName,
+      table: tableInfoStr,
+      numero: currentOrderNumber,
+      fullInfo: `${zoneName} • ${tableInfoStr}`,
+    };
+  };
+
+  // 🆕 Fonction pour sauvegarder la commande terminée dans Firestore
+  const saveCompletedOrderToFirestore = async () => {
+    if (!currentOrder || !restaurantSlug) {
+      console.error('❌ Informations manquantes pour sauvegarder la commande');
+      return false;
+    }
+
+    try {
+      const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+
+      // Calculer le prix total de la commande
+      const totalPrice = currentOrder.items.reduce((sum, item) => {
+        return sum + (item.prix * item.quantite);
+      }, 0);
+
+      const headerInfo = getHeaderInfo();
+
+      // Préparer les données de la commande
+      const completedOrderData = {
+        orderNumber: currentOrderNumber,
+        restaurantId: restaurantSlug,
+
+        // Informations de zone et table
+        zoneId: zoneId || null,
+        zoneName: headerInfo.zone,
+        tableId: tableId || null,
+        tableName: headerInfo.table || null,
+        serviceType: serviceType,
+
+        // Articles de la commande
+        items: currentOrder.items.map(item => ({
+          nom: item.nom,
+          prix: item.prix,
+          quantite: item.quantite,
+          note: item.note || '',
+          menuConfig: item.menuConfig || null
+        })),
+
+        // Prix et statut
+        totalPrice: totalPrice,
+        status: 'served',
+
+        // Horodatage
+        createdAt: currentOrder.createdAt || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        completedAt: serverTimestamp(),
+      };
+
+      // Sauvegarder dans Firestore
+      const ordersRef = collection(db, `restaurants/${restaurantSlug}/orders`);
+      const docRef = await addDoc(ordersRef, completedOrderData);
+
+      console.log('✅ Commande sauvegardée dans Firestore:', docRef.id);
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde dans Firestore:', error);
+      return false;
+    }
+  };
+
   // Autres fonctions (inchangées)
   const handleSendItems = async () => {
     if (!currentOrder) {
@@ -413,20 +505,41 @@ const Commande = () => {
     }
   };
 
+  // 🆕 Fonction modifiée pour terminer la commande avec sauvegarde Firestore
   const handleTerminateOrder = async () => {
     if (!currentOrder) return;
     setIsTerminating(true);
 
     try {
+      // 1. Envoyer les items en attente s'il y en a
       const pendingItems = items.filter(item => !item.envoye);
       if (pendingItems.length > 0) {
         await handleSendItems();
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      await updateOrderStatus('served');
+      // 2. Sauvegarder la commande dans Firestore (avec statut 'served')
+      const savedToFirestore = await saveCompletedOrderToFirestore();
+      if (!savedToFirestore) {
+        console.error('⚠️ La commande n\'a pas pu être sauvegardée dans Firestore');
+        // Continuer quand même pour ne pas bloquer l'utilisateur
+      }
+
+      // 3. Supprimer la commande de Realtime Database
+      const { ref, remove } = await import('firebase/database');
+      const { rtDatabase } = await import('@/lib/firebase');
+
+      const orderRef = ref(rtDatabase, `restaurants/${restaurantSlug}/orders/${currentOrder.id}`);
+      await remove(orderRef);
+      console.log('✅ Commande supprimée de Realtime Database');
+
+      // 4. Nettoyer la session de la table (supprime /sessions/table_{tableId})
       await clearCurrentSession();
+
+      // 5. Vider le panier local
       clearCart();
+
+      // 6. Retour à la liste des zones
       navigate(`/${restaurantSlug}/zones`);
     } catch (error) {
       console.error('❌ Erreur lors de la finalisation:', error);
@@ -473,38 +586,6 @@ const Commande = () => {
   };
 
   const getRetourPath = () => `/${restaurantSlug}/zones`;
-
-  const getHeaderInfo = () => {
-    const currentZone = zones.find(zone => zone.id === zoneId);
-    if (!currentZone) {
-      return {
-        zone: 'Zone inconnue',
-        table: null,
-        numero: currentOrderNumber,
-        fullInfo: 'Zone inconnue',
-      };
-    }
-
-    if (currentZone.serviceType === 'TAKEAWAY') {
-      return {
-        zone: currentZone?.nom,
-        table: null,
-        numero: currentOrderNumber,
-        fullInfo: `${currentZone?.nom}`,
-      };
-    }
-
-    const zoneName = tableInfo?.zone?.nom || 'Zone inconnue';
-    const tableNum = tableInfo?.table?.numero || 'inconnue';
-    const tableInfoStr = `Table ${tableNum}`;
-
-    return {
-      zone: zoneName,
-      table: tableInfoStr,
-      numero: currentOrderNumber,
-      fullInfo: `${zoneName} • ${tableInfoStr}`,
-    };
-  };
 
   // Loading states
   if (categoriesLoading || itemsLoading || zonesLoading || tableSearchLoading) {
