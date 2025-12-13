@@ -166,6 +166,7 @@ const Commande = () => {
     currentOrder,
     currentOrderNumber,
     addItemsToCurrentOrder,
+    updateOrderStatus,
     clearCurrentSession,
     deleteOrderItem,
     isLoadingOrder,
@@ -433,6 +434,11 @@ const Commande = () => {
 
       const headerInfo = getHeaderInfo();
 
+      // Obtenir l'année et le mois actuels
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+
       // Préparer les données de la commande
       const completedOrderData = {
         orderNumber: currentOrderNumber,
@@ -458,17 +464,21 @@ const Commande = () => {
         totalPrice: totalPrice,
         status: 'served',
 
+        // Métadonnées de période
+        year: year,
+        month: month,
+
         // Horodatage
         createdAt: currentOrder.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),
         completedAt: serverTimestamp(),
       };
 
-      // Sauvegarder dans Firestore
-      const ordersRef = collection(db, `restaurants/${restaurantSlug}/orders`);
+      // Sauvegarder dans Firestore avec structure hiérarchique : /restaurants/{restaurantSlug}/orders/{year}/{month}
+      const ordersRef = collection(db, `restaurants/${restaurantSlug}/orders/${year}/${month}`);
       const docRef = await addDoc(ordersRef, completedOrderData);
 
-      console.log('✅ Commande sauvegardée dans Firestore:', docRef.id);
+      console.log(`✅ Commande sauvegardée dans Firestore: /restaurants/${restaurantSlug}/orders/${year}/${month}/${docRef.id}`);
       return true;
     } catch (error) {
       console.error('❌ Erreur lors de la sauvegarde dans Firestore:', error);
