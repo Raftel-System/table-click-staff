@@ -21,7 +21,6 @@ export interface PrintData {
     items: {
         name: string;
         quantity: number;
-        price: number;
         note?: string;
         menuConfig?: any;
     }[];
@@ -56,7 +55,6 @@ class PrintService {
                 items: items.map(item => ({
                     name: item.nom,
                     quantity: item.quantite,
-                    price: item.prix,
                     note: item.note,
                     menuConfig: item.menuConfig
                 }))
