@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { orderService, type Order, type OrderItem } from '@/services/orderService';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { rtDatabase  } from '@/lib/firebase';
-import {get, ref, serverTimestamp, update} from "firebase/database";
+import {get, ref, update} from "firebase/database";
 import {useServiceTypeContextStore} from "@/stores/contextStore.tsx";
 
 export const useOrder = (
