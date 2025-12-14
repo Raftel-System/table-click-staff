@@ -281,7 +281,7 @@ export const AdjustmentPanel = ({
             {/* Indicateur d'étape pour les menus composés */}
             {isMenuConfig && totalSteps > 0 && (
                 <div className="text-xs theme-secondary-text mb-2">
-                  Étape {currentStepIndex + 1}/{totalSteps}
+                  Étape {String(currentStepIndex + 1)}/{String(totalSteps)}
                 </div>
             )}
           </div>
@@ -314,7 +314,7 @@ export const AdjustmentPanel = ({
                   </button>
 
                   <div className="text-blue-800 font-bold text-base">
-                    {selectedStepOption.quantity}
+                    {String(selectedStepOption.quantity)}
                   </div>
 
                   <button
@@ -349,7 +349,7 @@ export const AdjustmentPanel = ({
                     </button>
 
                     <div className="theme-foreground-text font-bold text-lg">
-                      {quantity}
+                      {String(quantity)}
                     </div>
 
                     <button
