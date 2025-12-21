@@ -1,10 +1,7 @@
 // src/services/printService.ts
 
-
 // Configuration pour le serveur d'impression
 import type {OrderItem} from "@/services/orderService.ts";
-
-const PRINT_SERVER_URL = 'http://localhost:3001/print-ticket'; // À remplacer par l'URL réelle de votre serveur d'impression
 
 // Type pour les données d'impression
 export interface PrintData {
@@ -26,7 +23,45 @@ export interface PrintData {
     }[];
 }
 
+interface PrintConfig {
+    serverPrinterIp: string;
+    printerIp: string;
+}
+
 class PrintService {
+    /**
+     * Récupère la configuration d'impression depuis Firestore
+     */
+    private async getPrintConfig(restaurantSlug: string): Promise<PrintConfig> {
+        try {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            const configRef = doc(db, `restaurants/${restaurantSlug}/settings/config`);
+            const configSnap = await getDoc(configRef);
+
+            if (configSnap.exists()) {
+                const data = configSnap.data();
+                return {
+                    serverPrinterIp: data.serverPrinterIp || 'https://zeus-lab.tailfdaef5.ts.net/print-ticket',
+                    printerIp: data.printerIp || '192.168.1.102'
+                };
+            } else {
+                console.warn('⚠️ Config non trouvée, utilisation des valeurs par défaut');
+                return {
+                    serverPrinterIp: 'https://zeus-lab.tailfdaef5.ts.net/print-ticket',
+                    printerIp: '192.168.1.102'
+                };
+            }
+        } catch (error) {
+            console.error('❌ Erreur récupération config impression:', error);
+            return {
+                serverPrinterIp: 'https://zeus-lab.tailfdaef5.ts.net/print-ticket',
+                printerIp: '192.168.1.102'
+            };
+        }
+    }
+
     /**
      * Envoie les nouveaux articles d'une commande au serveur d'impression
      */
@@ -45,9 +80,14 @@ class PrintService {
         }
 
         try {
+            // Récupérer la configuration d'impression depuis Firestore
+            const config = await this.getPrintConfig(restaurantSlug);
+
+            console.log(`📄 Configuration d'impression récupérée:`, config);
+
             // Construction de l'objet printData
             const printData: PrintData = {
-                ip: "192.168.1.102",
+                ip: config.printerIp,
                 restaurantId: restaurantSlug,
                 serviceType,
                 orderNumber,
@@ -69,9 +109,10 @@ class PrintService {
                 };
             }
 
+            console.log(`📤 Envoi du ticket vers: ${config.serverPrinterIp}`);
 
             // Envoi au serveur d'impression
-            const response = await fetch("https://zeus-lab.tailfdaef5.ts.net/print-ticket", {
+            const response = await fetch(config.serverPrinterIp, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -83,6 +124,7 @@ class PrintService {
                 throw new Error(`Erreur serveur d'impression: ${response.status}`);
             }
 
+            console.log('✅ Ticket envoyé avec succès');
             return true;
         } catch (error) {
             console.error('❌ Erreur lors de l\'impression:', error);
